@@ -1,0 +1,6 @@
+@do_an_server_nang_cao_HostAddress = http://localhost:5033
+
+GET {{do_an_server_nang_cao_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
