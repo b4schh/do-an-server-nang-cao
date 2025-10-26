@@ -15,7 +15,7 @@ public static class DatabaseSeeder
         {
             LastName = "Admin",
             FirstName = "System",
-            Email = "admin@footballfield.com",
+            Email = "admin@gmail.com",
             Phone = "0900000000",
             Password = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
             Role = UserRole.Admin,
@@ -26,7 +26,7 @@ public static class DatabaseSeeder
         {
             LastName = "Nguyễn",
             FirstName = "Văn A",
-            Email = "owner1@footballfield.com",
+            Email = "owner1@gmail.com",
             Phone = "0901111111",
             Password = BCrypt.Net.BCrypt.HashPassword("Owner@123"),
             Role = UserRole.Owner,
@@ -37,7 +37,7 @@ public static class DatabaseSeeder
         {
             LastName = "Trần",
             FirstName = "Thị B",
-            Email = "owner2@footballfield.com",
+            Email = "owner2@gmail.com",
             Phone = "0902222222",
             Password = BCrypt.Net.BCrypt.HashPassword("Owner@123"),
             Role = UserRole.Owner,
@@ -48,7 +48,7 @@ public static class DatabaseSeeder
         {
             LastName = "Lê",
             FirstName = "Văn C",
-            Email = "owner3@footballfield.com",
+            Email = "owner3@gmail.com",
             Phone = "0903333333",
             Password = BCrypt.Net.BCrypt.HashPassword("Owner@123"),
             Role = UserRole.Owner,
@@ -59,7 +59,7 @@ public static class DatabaseSeeder
         {
             LastName = "Phạm",
             FirstName = "Văn D",
-            Email = "customer1@footballfield.com",
+            Email = "customer1@gmail.com",
             Phone = "0904444444",
             Password = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
             Role = UserRole.Customer,
@@ -70,7 +70,7 @@ public static class DatabaseSeeder
         {
             LastName = "Hoàng",
             FirstName = "Thị E",
-            Email = "customer2@footballfield.com",
+            Email = "customer2@gmail.com",
             Phone = "0905555555",
             Password = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
             Role = UserRole.Customer,
@@ -81,7 +81,7 @@ public static class DatabaseSeeder
         {
             LastName = "Vũ",
             FirstName = "Văn F",
-            Email = "customer3@footballfield.com",
+            Email = "customer3@gmail.com",
             Phone = "0906666666",
             Password = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
             Role = UserRole.Customer,
@@ -95,10 +95,10 @@ public static class DatabaseSeeder
         var complex1 = new Complex
         {
             OwnerId = 2,
-            Name = "Sân Bóng Thành Phố",
-            Street = "123 Nguyễn Huệ",
-            Ward = "Bến Nghé",
-            Province = "Hồ Chí Minh",
+            Name = "Sân Bóng Thủ Đô",
+            Street = "123 Kim Mã",
+            Ward = "Ba Đình ",
+            Province = "Hà Nội",
             Phone = "0281234567",
             OpeningTime = new TimeSpan(6, 0, 0),
             ClosingTime = new TimeSpan(22, 0, 0),
@@ -110,10 +110,10 @@ public static class DatabaseSeeder
         var complex2 = new Complex
         {
             OwnerId = 3,
-            Name = "Sân Bóng Quận 7",
-            Street = "456 Nguyễn Thị Thập",
-            Ward = "Tân Phú",
-            Province = "Hồ Chí Minh",
+            Name = "Sân Bóng BKX",
+            Street = "456 Tạ Quang Bửu",
+            Ward = "Bạch Mai",
+            Province = "Hà Nội",
             Phone = "0282345678",
             OpeningTime = new TimeSpan(5, 30, 0),
             ClosingTime = new TimeSpan(23, 0, 0),
@@ -125,10 +125,10 @@ public static class DatabaseSeeder
         var complex3 = new Complex
         {
             OwnerId = 4,
-            Name = "Sân Bóng Bình Thạnh",
-            Street = "789 Xô Viết Nghệ Tĩnh",
-            Ward = "Phường 25",
-            Province = "Hồ Chí Minh",
+            Name = "Sân Bóng Đầm Hồng",
+            Street = "789 Trường Chinh",
+            Ward = "Khương Đình",
+            Province = "Hà Nội",
             Phone = "0283456789",
             OpeningTime = new TimeSpan(6, 0, 0),
             ClosingTime = new TimeSpan(22, 30, 0),
@@ -185,123 +185,46 @@ public static class DatabaseSeeder
         context.Fields.AddRange(fields);
         context.SaveChanges();
 
-        // 4. SEED TIME SLOTS (5 slots mỗi sân)
+        // 4. SEED TIME SLOTS (chia khung 1h30 từ 6:00 đến 22:00)
         var timeSlots = new List<TimeSlot>();
 
         foreach (var field in fields)
         {
-            var basePrice = field.FieldSize == "Sân 5" ? 300000 : (field.FieldSize == "Sân 7" ? 500000 : 800000);
+            var basePrice = field.FieldSize == "Sân 5"
+                ? 300000m
+                : (field.FieldSize == "Sân 7" ? 500000m : 800000m);
 
-            // Morning slots (6-12)
-            timeSlots.Add(new TimeSlot
-            {
-                FieldId = field.Id,
-                StartTime = new TimeSpan(6, 0, 0),
-                EndTime = new TimeSpan(8, 0, 0),
-                Price = basePrice * 0.8m,
-                IsActive = true,
-            });
+            var startOfDay = new TimeSpan(6, 0, 0);
+            var endOfDay = new TimeSpan(22, 0, 0);
+            var slotDuration = new TimeSpan(1, 30, 0); // 1h30
 
-            timeSlots.Add(new TimeSlot
+            for (var start = startOfDay; start < endOfDay; start += slotDuration)
             {
-                FieldId = field.Id,
-                StartTime = new TimeSpan(8, 0, 0),
-                EndTime = new TimeSpan(10, 0, 0),
-                Price = basePrice,
-                IsActive = true,
-            });
+                var end = start + slotDuration;
 
-            // Afternoon slots
-            timeSlots.Add(new TimeSlot
-            {
-                FieldId = field.Id,
-                StartTime = new TimeSpan(14, 0, 0),
-                EndTime = new TimeSpan(16, 0, 0),
-                Price = basePrice,
-                IsActive = true,
-            });
+                // Xác định buổi để tính giá
+                decimal priceMultiplier;
 
-            // Evening slots (prime time - expensive)
-            timeSlots.Add(new TimeSlot
-            {
-                FieldId = field.Id,
-                StartTime = new TimeSpan(18, 0, 0),
-                EndTime = new TimeSpan(20, 0, 0),
-                Price = basePrice * 1.3m,
-                IsActive = true,
-            });
+                if (start.Hours < 8)
+                    priceMultiplier = 0.8m; // Sáng sớm
+                else if (start.Hours < 17)
+                    priceMultiplier = 1.0m; // Ban ngày
+                else if (start.Hours < 20)
+                    priceMultiplier = 1.3m; // Tối cao điểm
+                else
+                    priceMultiplier = 1.2m; // Tối muộn
 
-            timeSlots.Add(new TimeSlot
-            {
-                FieldId = field.Id,
-                StartTime = new TimeSpan(20, 0, 0),
-                EndTime = new TimeSpan(22, 0, 0),
-                Price = basePrice * 1.2m,
-                IsActive = true,
-            });
-        }
-
-        context.TimeSlots.AddRange(timeSlots);
-        context.SaveChanges();
-
-        // 5. SEED BOOKINGS
-        var bookings = new[]
-        {
-            new Booking
-            {
-                FieldId = 1,
-                CustomerId = 5,
-                OwnerId = 2,
-                BookingDate = now.AddDays(2),
-                TimeSlotId = 4,
-                DepositAmount = 78000,
-                TotalAmount = 260000,
-                BookingStatus = BookingStatus.Confirmed,
-                PaymentStatus = PaymentStatus.DepositPaid,
-                PaymentMethod = "MoMo",
-                TransactionId = "MOMO123456",
-            },
-            new Booking
-            {
-                FieldId = 6,
-                CustomerId = 6,
-                OwnerId = 3,
-                BookingDate = now.AddDays(3),
-                TimeSlotId = 29,
-                DepositAmount = 195000,
-                TotalAmount = 390000,
-                BookingStatus = BookingStatus.Confirmed,
-                PaymentStatus = PaymentStatus.FullyPaid,
-                PaymentMethod = "VNPay",
-                TransactionId = "VNP789012",
-            },
-            new Booking
-            {
-                FieldId = 10,
-                CustomerId = 7,
-                OwnerId = 3,
-                BookingDate = now.AddDays(1),
-                TimeSlotId = 50,
-                DepositAmount = 260000,
-                TotalAmount = 650000,
-                BookingStatus = BookingStatus.Pending,
-                PaymentStatus = PaymentStatus.Unpaid,
-            },
-            new Booking
-            {
-                FieldId = 11,
-                CustomerId = 5,
-                OwnerId = 4,
-                BookingDate = now.AddDays(5),
-                TimeSlotId = 56,
-                DepositAmount = 120000,
-                TotalAmount = 400000,
-                BookingStatus = BookingStatus.Completed,
-                PaymentStatus = PaymentStatus.FullyPaid,
-                PaymentMethod = "Cash",
+                timeSlots.Add(new TimeSlot
+                {
+                    FieldId = field.Id,
+                    StartTime = start,
+                    EndTime = end,
+                    Price = basePrice * priceMultiplier,
+                    IsActive = true,
+                });
             }
-        };
-        context.Bookings.AddRange(bookings);
+        }
+        context.TimeSlots.AddRange(timeSlots);
         context.SaveChanges();
     }
 }

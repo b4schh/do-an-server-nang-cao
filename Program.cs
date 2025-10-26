@@ -1,4 +1,5 @@
 using FootballField.API.DbContexts;
+using FootballField.API.Middlewares;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
@@ -62,7 +63,8 @@ app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
 
-// Authentication & Authorization
+app.UseMiddleware<ExceptionMiddleware>();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

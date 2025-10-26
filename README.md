@@ -91,8 +91,7 @@ dotnet watch run
 
 ### 8. Truy cập ứng dụng
 
-- **API**: http://localhost:5000 hoặc https://localhost:5001
-- **Swagger UI**: https://localhost:5001/swagger
+- **Swagger UI**: https://localhost:5033/swagger
 
 ## Dữ liệu mẫu (Seeding)
 
@@ -101,22 +100,20 @@ Dự án có sẵn dữ liệu mẫu được tự động seed khi chạy lần
 ### Tài khoản mẫu:
 
 **Admin:**
-- Email: `admin@footballfield.com`
+- Email: `admin@gmail.com`
 - Password: `Admin@123`
 
 **Chủ sân (Owner):**
-- Email: `owner1@footballfield.com` | Password: `Owner@123`
-- Email: `owner2@footballfield.com` | Password: `Owner@123`
-- Email: `owner3@footballfield.com` | Password: `Owner@123`
+- Email: `owner1@gmail.com` | Password: `Owner@123`
+- Email: `owner2@gmail.com` | Password: `Owner@123`
+- Email: `owner3@gmail.com` | Password: `Owner@123`
 
 **Khách hàng (Customer):**
-- Email: `customer1@footballfield.com` | Password: `Customer@123`
-- Email: `customer2@footballfield.com` | Password: `Customer@123`
-- Email: `customer3@footballfield.com` | Password: `Customer@123`
+- Email: `customer1@gmail.com` | Password: `Customer@123`
+- Email: `customer2@gmail.com` | Password: `Customer@123`
+- Email: `customer3@gmail.com` | Password: `Customer@123`
 
 ### Dữ liệu khác:
 - 3 cụm sân bóng
 - 12 sân bóng (4-5 sân mỗi cụm)
 - 60 time slots (5 slots/sân)
-- 4 bookings mẫu
-- 3 reviews

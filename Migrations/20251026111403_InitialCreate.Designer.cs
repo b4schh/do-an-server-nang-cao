@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FootballField.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251025173217_InitialCreate")]
+    [Migration("20251026111403_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
