@@ -117,19 +117,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// CORS phải đứng trước Authentication
+
 app.UseCors("AllowAll");
 
 app.UseHttpsRedirection();
 
-// Routing phải đứng trước Authentication
+
 app.UseRouting();
 
-// Authentication trước Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
-// MapControllers là một dạng endpoint, phải đứng sau Authorization
+
 app.MapControllers();
 
 app.Run();
