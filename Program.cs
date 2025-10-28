@@ -1,10 +1,4 @@
-using FootballField.API.DbContexts;
-using FootballField.API.Repositories.Interfaces;
-using FootballField.API.Repositories.Implements;
-using FootballField.API.Services.Interfaces;
-using FootballField.API.Services.Implements;
 using FootballField.API.Utils;
-using FootballField.API.Mappings;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -74,7 +68,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "JWT Authorization header. Just enter your token below - no need for 'Bearer' prefix",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http, 
+        Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT"
     });
@@ -92,6 +86,13 @@ builder.Services.AddSwaggerGen(c =>
             },
             Array.Empty<string>()
         }
+    });
+
+    c.MapType<TimeSpan>(() => new OpenApiSchema
+    {
+        Type = "string",
+        Format = "time",
+        Example = new OpenApiString("HH:mm:ss")
     });
 });
 
