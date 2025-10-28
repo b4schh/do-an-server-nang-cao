@@ -1,16 +1,64 @@
-using FootballField.API.DbContexts;
-using FootballField.API.Middlewares;
+using FootballField.API.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Any;
+using FootballField.API.Middlewares;
+using FootballField.API.DbContexts;
+using FootballField.API.Mappings;
+using FootballField.API.Repositories.Interfaces;
+using FootballField.API.Repositories.Implements;
+using FootballField.API.Services.Interfaces;
+using FootballField.API.Services.Implements;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Đọc Connection String từ appsettings.json
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-// Đăng ký DbContext với DI Container
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
+
+// ========== ĐĂNG KÝ AUTOMAPPER ==========
+builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+// ========== ĐĂNG KÝ REPOSITORIES ==========
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// ========== ĐĂNG KÝ SERVICES ==========
+builder.Services.AddScoped<IUserService, UserService>();
+
+// ========== ĐĂNG KÝ UTILITIES ==========
+builder.Services.AddScoped<JwtHelper>();
+
+// ========== CẤU HÌNH JWT AUTHENTICATION ==========
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
+var issuer = jwtSettings["Issuer"];
+var audience = jwtSettings["Audience"];
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = issuer,
+        ValidAudience = audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
 
 // Cấu hình dịch vụ (Swagger, Controller, CORS, Logging…)
 builder.Services.AddControllers()
@@ -18,15 +66,50 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
-    
+
 builder.Services.AddEndpointsApiExplorer();
+
+// Cấu hình Swagger với JWT Authentication
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Football Field Booking API",
         Version = "v1",
-        Description = "API cho ứng dụng đặt sân bóng đá",
+        Description = "API for managing football field bookings"
+    });
+
+    // Thêm định nghĩa bảo mật JWT
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header. Just enter your token below - no need for 'Bearer' prefix",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    c.MapType<TimeSpan>(() => new OpenApiSchema
+    {
+        Type = "string",
+        Format = "time",
+        Example = new OpenApiString("HH:mm:ss")
     });
 });
 
@@ -41,17 +124,10 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Build app
 var app = builder.Build();
 
-// Áp dụng Migration tự động (tùy chọn, có thể bỏ)
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate(); // tự động tạo DB nếu chưa có
-
-    // Seed dữ liệu mẫu
-    db.SeedData();
-}
+app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -59,11 +135,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
 app.UseCors("AllowAll");
 
-app.UseMiddleware<ExceptionMiddleware>();
+app.UseHttpsRedirection();
+
+app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
