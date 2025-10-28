@@ -6,12 +6,14 @@ using System.Text;
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Any;
 using FootballField.API.Middlewares;
+using FootballField.API.DbContexts;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Đọc Connection String từ appsettings.json
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(connectionString));
 
 // ========== ĐĂNG KÝ UTILITIES ==========
 builder.Services.AddScoped<JwtHelper>();

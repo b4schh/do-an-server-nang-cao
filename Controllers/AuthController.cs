@@ -19,9 +19,7 @@ namespace FootballField.API.Controllers
             _authService = authService;
         }
 
-        /// <summary>
-        /// Register new user account
-        /// </summary>
+        
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
@@ -42,9 +40,6 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<LoginResponse>.Ok(result, "Đăng ký thành công"));
         }
 
-        /// <summary>
-        /// Login endpoint - returns JWT token
-        /// </summary>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
@@ -65,9 +60,7 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<LoginResponse>.Ok(result, "Đăng nhập thành công"));
         }
 
-        /// <summary>
-        /// Get current user profile - requires authentication
-        /// </summary>
+  
         [HttpGet("profile")]
         [Authorize]
         public async Task<IActionResult> GetProfile()
@@ -83,9 +76,7 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<UserDto>.Ok(user, "Lấy thông tin thành công"));
         }
 
-        /// <summary>
-        /// Admin only endpoint - demo authorization
-        /// </summary>
+   
         [HttpGet("admin-only")]
         [Authorize(Roles = "Admin")]
         public IActionResult AdminOnly()
