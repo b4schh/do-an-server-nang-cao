@@ -19,7 +19,6 @@ namespace FootballField.API.Controllers
             _authService = authService;
         }
 
-        
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
@@ -60,7 +59,6 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<LoginResponse>.Ok(result, "Đăng nhập thành công"));
         }
 
-  
         [HttpGet("profile")]
         [Authorize]
         public async Task<IActionResult> GetProfile()
@@ -76,7 +74,6 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<UserDto>.Ok(user, "Lấy thông tin thành công"));
         }
 
-   
         [HttpGet("admin-only")]
         [Authorize(Roles = "Admin")]
         public IActionResult AdminOnly()

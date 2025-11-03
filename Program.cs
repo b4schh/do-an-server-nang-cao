@@ -7,6 +7,11 @@ using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Any;
 using FootballField.API.Middlewares;
 using FootballField.API.DbContexts;
+using FootballField.API.Mappings;
+using FootballField.API.Repositories.Interfaces;
+using FootballField.API.Repositories.Implements;
+using FootballField.API.Services.Interfaces;
+using FootballField.API.Services.Implements;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +19,16 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
+
+// ========== ĐĂNG KÝ AUTOMAPPER ==========
+builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+// ========== ĐĂNG KÝ REPOSITORIES ==========
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// ========== ĐĂNG KÝ SERVICES ==========
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // ========== ĐĂNG KÝ UTILITIES ==========
 builder.Services.AddScoped<JwtHelper>();
@@ -121,11 +136,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-
 app.UseCors("AllowAll");
 
 app.UseHttpsRedirection();
-
 
 app.UseRouting();
 
