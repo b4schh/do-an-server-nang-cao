@@ -17,9 +17,6 @@ namespace FootballField.API.Controllers
             _complexService = complexService;
         }
 
-        /// <summary>
-        /// Get all complexes with pagination
-        /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
@@ -28,9 +25,6 @@ namespace FootballField.API.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Get complex by ID
-        /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -41,9 +35,6 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<ComplexDto>.Ok(complex, "Lấy thông tin sân thành công"));
         }
 
-        /// <summary>
-        /// Get complex with fields
-        /// </summary>
         [HttpGet("{id}/with-fields")]
         public async Task<IActionResult> GetWithFields(int id)
         {
@@ -54,9 +45,6 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<ComplexWithFieldsDto>.Ok(complex, "Lấy thông tin sân thành công"));
         }
 
-        /// <summary>
-        /// Get complexes by owner ID
-        /// </summary>
         [HttpGet("owner/{ownerId}")]
         [Authorize]
         public async Task<IActionResult> GetByOwnerId(int ownerId)
@@ -65,9 +53,7 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<IEnumerable<ComplexDto>>.Ok(complexes, "Lấy danh sách sân thành công"));
         }
 
-        /// <summary>
-        /// Create new complex
-        /// </summary>
+      
         [HttpPost]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> Create([FromBody] CreateComplexDto createComplexDto)
@@ -76,9 +62,6 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<ComplexDto>.Ok(created, "Tạo sân thành công", 201));
         }
 
-        /// <summary>
-        /// Update complex
-        /// </summary>
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateComplexDto updateComplexDto)
@@ -91,9 +74,7 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<string>.Ok(null, "Cập nhật sân thành công"));
         }
 
-        /// <summary>
-        /// Soft delete complex
-        /// </summary>
+       
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> Delete(int id)
