@@ -3,6 +3,7 @@ using FootballField.API.Entities;
 using FootballField.API.Dtos.User;
 using FootballField.API.Dtos.Complex;
 using FootballField.API.Dtos.Field;
+using FootballField.API.Dtos.TimeSlot;
 
 namespace FootballField.API.Mappings
 {
@@ -19,8 +20,8 @@ namespace FootballField.API.Mappings
                 .ForMember(dest => dest.Email, opt => opt.Ignore())
                 .ForMember(dest => dest.Password, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
-            
-            
+
+            // Complex Mapping
             CreateMap<Complex, ComplexDto>();
             CreateMap<Complex, ComplexWithFieldsDto>();
             CreateMap<Complex, ComplexFullDetailsDto>()
@@ -33,6 +34,7 @@ namespace FootballField.API.Mappings
                 .ForMember(dest => dest.OwnerId, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
 
+            // Field Mapping
             CreateMap<Field, FieldDto>();
             CreateMap<Field, FieldWithTimeSlotsDto>()
                 .ForMember(dest => dest.TimeSlots, opt => opt.MapFrom(src => src.TimeSlots));
@@ -40,6 +42,16 @@ namespace FootballField.API.Mappings
             CreateMap<UpdateFieldDto, Field>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.ComplexId, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+
+            // Timeslot Mapping
+            CreateMap<TimeSlot, TimeSlotDto>();
+            CreateMap<TimeSlot, TimeSlotWithAvailabilityDto>()
+                .ForMember(dest => dest.IsBooked, opt => opt.MapFrom(src => false)); // Default false, sẽ được set trong service nếu cần
+            CreateMap<CreateTimeSlotDto, TimeSlot>();
+            CreateMap<UpdateTimeSlotDto, TimeSlot>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.FieldId, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
         }
     }

@@ -20,13 +20,6 @@ namespace FootballField.API.Dtos.Complex
 
         public TimeSpan? OpeningTime { get; set; }
         public TimeSpan? ClosingTime { get; set; }
-
-        [Range(-90, 90)]
-        public decimal? Latitude { get; set; }
-
-        [Range(-180, 180)]
-        public decimal? Longitude { get; set; }
-
         public string? Description { get; set; }
     }
 }

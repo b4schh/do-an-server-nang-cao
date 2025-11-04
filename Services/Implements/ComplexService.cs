@@ -91,20 +91,17 @@ namespace FootballField.API.Services.Implements
             return _mapper.Map<IEnumerable<ComplexDto>>(complexes);
         }
         public async Task<IEnumerable<ComplexDto>> SearchComplexesAsync(
-    string? name,
-    string? street,
-    string? ward,
-    string? province,
-    decimal? minPrice = null,
-    decimal? maxPrice = null,
-    double? minRating = null,
-    double? maxRating = null)
+            string? name,
+            string? street,
+            string? ward,
+            string? province,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            double? minRating = null,
+            double? maxRating = null)
         {
             // Lấy tất cả complexes kèm Fields, TimeSlots, Reviews
-            var complexes = await _complexRepository.GetAllAsync(c => !c.IsDeleted);
-
-            // Cần Include Fields.TimeSlots và Reviews
-            complexes = await _complexRepository.GetComplexesWithDetailsForSearchAsync();
+            var complexes = await _complexRepository.GetComplexesWithDetailsForSearchAsync();
 
             // Filter theo tên
             if (!string.IsNullOrWhiteSpace(name))

@@ -16,7 +16,7 @@ namespace FootballField.API.Controllers
         {
             _timeSlotService = timeSlotService;
         }
-   
+
         // Lấy tất cả TimeSlots
         [HttpGet]
         public async Task<IActionResult> GetAll()
@@ -25,7 +25,6 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<IEnumerable<TimeSlotDto>>.Ok(timeSlots, "Lấy danh sách khung giờ thành công"));
         }
 
-        
         // Lấy TimeSlot theo ID
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
@@ -37,7 +36,6 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<TimeSlotDto>.Ok(timeSlot, "Lấy thông tin khung giờ thành công"));
         }
 
-        
         // Lấy TimeSlot theo FieldID
         [HttpGet("field/{fieldId}")]
         public async Task<IActionResult> GetByFieldId(int fieldId)
@@ -46,31 +44,41 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<IEnumerable<TimeSlotDto>>.Ok(timeSlots, "Lấy danh sách khung giờ thành công"));
         }
 
-        
         // Tạo TimeSlot mới
         [HttpPost]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> Create([FromBody] CreateTimeSlotDto createTimeSlotDto)
         {
-            var created = await _timeSlotService.CreateTimeSlotAsync(createTimeSlotDto);
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, ApiResponse<TimeSlotDto>.Ok(created, "Tạo khung giờ thành công", 201));
+            var result = await _timeSlotService.CreateTimeSlotAsync(createTimeSlotDto);
+
+            if (!result.isSuccess)
+            {
+                // Trả lỗi 400 (BadRequest)
+                return BadRequest(ApiResponse<string>.Fail(result.errorMessage!, 400));
+            }
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = result.data!.Id },
+                ApiResponse<TimeSlotDto>.Ok(result.data, "Tạo khung giờ thành công", 201)
+            );
         }
 
-        
+
         // Cập nhật TimeSlot
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateTimeSlotDto updateTimeSlotDto)
         {
-            var existing = await _timeSlotService.GetTimeSlotByIdAsync(id);
-            if (existing == null)
-                return NotFound(ApiResponse<string>.Fail("Không tìm thấy khung giờ", 404));
+            var result = await _timeSlotService.UpdateTimeSlotAsync(id, updateTimeSlotDto);
 
-            await _timeSlotService.UpdateTimeSlotAsync(id, updateTimeSlotDto);
+            if (!result.isSuccess)
+                return BadRequest(ApiResponse<string>.Fail(result.errorMessage!, 400));
+
             return Ok(ApiResponse<string>.Ok("", "Cập nhật khung giờ thành công"));
         }
 
-        
+
         // Xóa TimeSlot
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin,Owner")]

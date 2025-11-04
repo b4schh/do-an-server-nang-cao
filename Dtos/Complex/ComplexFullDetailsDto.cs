@@ -13,8 +13,6 @@ namespace FootballField.API.Dtos.Complex
         public string? Phone { get; set; }
         public TimeSpan? OpeningTime { get; set; }
         public TimeSpan? ClosingTime { get; set; }
-        public decimal? Latitude { get; set; }
-        public decimal? Longitude { get; set; }
         public string? Description { get; set; }
         public byte Status { get; set; }
         public bool IsActive { get; set; }

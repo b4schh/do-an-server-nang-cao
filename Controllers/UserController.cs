@@ -61,6 +61,19 @@ namespace FootballField.API.Controllers
             return Ok(ApiResponse<string>.Ok("", "Cập nhật người dùng thành công"));
         }
 
+        // Cập nhật role của User
+        [HttpPatch("{id}/role")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateRole(int id, [FromBody] UpdateUserRoleDto updateUserRoleDto)
+        {
+            var existing = await _userService.GetUserByIdAsync(id);
+            if (existing == null)
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
+
+            await _userService.UpdateUserRoleAsync(id, updateUserRoleDto);
+            return Ok(ApiResponse<string>.Ok("", "Cập nhật role người dùng thành công"));
+        }
+        
         /// Xóa người dùng (soft delete)
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)

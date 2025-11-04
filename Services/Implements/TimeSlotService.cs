@@ -35,27 +35,52 @@ namespace FootballField.API.Services.Implements
             return _mapper.Map<IEnumerable<TimeSlotDto>>(timeSlots);
         }
 
-        public async Task<TimeSlotDto> CreateTimeSlotAsync(CreateTimeSlotDto createTimeSlotDto)
+        private bool IsOverlapping(TimeSpan start1, TimeSpan end1, TimeSpan start2, TimeSpan end2)
         {
-            var timeSlot = _mapper.Map<TimeSlot>(createTimeSlotDto);
-            timeSlot.CreatedAt = DateTime.Now;
-            timeSlot.UpdatedAt = DateTime.Now;
-            
-            var created = await _timeSlotRepository.AddAsync(timeSlot);
-            return _mapper.Map<TimeSlotDto>(created);
+            return start1 < end2 && start2 < end1;
         }
 
-        public async Task UpdateTimeSlotAsync(int id, UpdateTimeSlotDto updateTimeSlotDto)
+        public async Task<(bool isSuccess, string? errorMessage, TimeSlotDto? data)> CreateTimeSlotAsync(CreateTimeSlotDto dto)
+        {
+            var existingTimeSlots = await _timeSlotRepository.GetActiveTimeSlotsAsync(dto.FieldId);
+
+            foreach (var ts in existingTimeSlots)
+            {
+                if (IsOverlapping(dto.StartTime, dto.EndTime, ts.StartTime, ts.EndTime))
+                    return (false, "Thời gian khung giờ bị trùng với một khung giờ khác của sân này.", null);
+            }
+
+            var timeSlot = _mapper.Map<TimeSlot>(dto);
+            timeSlot.CreatedAt = DateTime.Now;
+            timeSlot.UpdatedAt = DateTime.Now;
+
+            var created = await _timeSlotRepository.AddAsync(timeSlot);
+            return (true, null, _mapper.Map<TimeSlotDto>(created));
+        }
+
+
+        public async Task<(bool isSuccess, string? errorMessage)> UpdateTimeSlotAsync(int id, UpdateTimeSlotDto dto)
         {
             var existingTimeSlot = await _timeSlotRepository.GetByIdAsync(id);
             if (existingTimeSlot == null)
-                throw new Exception("TimeSlot not found");
+                return (false, "Không tìm thấy khung giờ.");
 
-            _mapper.Map(updateTimeSlotDto, existingTimeSlot);
+            var existingTimeSlots = (await _timeSlotRepository.GetActiveTimeSlotsAsync(existingTimeSlot.FieldId))
+                                    .Where(ts => ts.Id != id);
+
+            foreach (var ts in existingTimeSlots)
+            {
+                if (IsOverlapping(dto.StartTime, dto.EndTime, ts.StartTime, ts.EndTime))
+                    return (false, "Thời gian khung giờ bị trùng với một khung giờ khác của sân này.");
+            }
+
+            _mapper.Map(dto, existingTimeSlot);
             existingTimeSlot.UpdatedAt = DateTime.Now;
-            
+
             await _timeSlotRepository.UpdateAsync(existingTimeSlot);
+            return (true, null);
         }
+
 
         public async Task DeleteTimeSlotAsync(int id)
         {

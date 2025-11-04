@@ -27,17 +27,19 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // ========== ĐĂNG KÝ REPOSITORIES ==========
-builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IComplexRepository, ComplexRepository>();
 builder.Services.AddScoped<IFieldRepository, FieldRepository>();
-builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
 
 // ========== ĐĂNG KÝ SERVICES ==========
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IComplexService, ComplexService>();
-builder.Services.AddScoped<IFieldService, FieldService>();
-builder.Services.AddScoped<IComplexImageService, ComplexImageService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IComplexService, ComplexService>();
+builder.Services.AddScoped<IComplexImageService, ComplexImageService>();
+builder.Services.AddScoped<IFieldService, FieldService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITimeSlotService, TimeSlotService>();
 
 // ========== ĐĂNG KÝ UTILITIES ==========
 builder.Services.AddScoped<JwtHelper>();

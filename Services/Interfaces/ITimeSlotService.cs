@@ -7,8 +7,8 @@ namespace FootballField.API.Services.Interfaces
         Task<IEnumerable<TimeSlotDto>> GetAllTimeSlotsAsync();
         Task<TimeSlotDto?> GetTimeSlotByIdAsync(int id);
         Task<IEnumerable<TimeSlotDto>> GetTimeSlotsByFieldIdAsync(int fieldId);
-        Task<TimeSlotDto> CreateTimeSlotAsync(CreateTimeSlotDto createTimeSlotDto);
-        Task UpdateTimeSlotAsync(int id, UpdateTimeSlotDto updateTimeSlotDto);
+        Task<(bool isSuccess, string? errorMessage, TimeSlotDto? data)> CreateTimeSlotAsync(CreateTimeSlotDto createTimeSlotDto);
+        Task<(bool isSuccess, string? errorMessage)> UpdateTimeSlotAsync(int id, UpdateTimeSlotDto updateTimeSlotDto);
         Task DeleteTimeSlotAsync(int id);
     }
 }
