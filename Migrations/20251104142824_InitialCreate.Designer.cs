@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FootballField.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251103135115_dowtest1")]
-    partial class dowtest1
+    [Migration("20251104142824_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -506,6 +506,10 @@ namespace FootballField.API.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("comment");
 
+                    b.Property<int>("ComplexId")
+                        .HasColumnType("int")
+                        .HasColumnName("complex_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -519,10 +523,6 @@ namespace FootballField.API.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2")
                         .HasColumnName("deleted_at");
-
-                    b.Property<int>("FieldId")
-                        .HasColumnType("int")
-                        .HasColumnName("field_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -550,10 +550,10 @@ namespace FootballField.API.Migrations
 
                     b.HasIndex("BookingId");
 
-                    b.HasIndex("CustomerId");
+                    b.HasIndex("ComplexId")
+                        .HasDatabaseName("IX_Review_ComplexId");
 
-                    b.HasIndex("FieldId")
-                        .HasDatabaseName("IX_Review_FieldId");
+                    b.HasIndex("CustomerId");
 
                     b.ToTable("REVIEW", null, t =>
                         {
@@ -976,23 +976,23 @@ namespace FootballField.API.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("FootballField.API.Entities.Complex", "Complex")
+                        .WithMany("Reviews")
+                        .HasForeignKey("ComplexId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("FootballField.API.Entities.User", "Customer")
                         .WithMany("Reviews")
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("FootballField.API.Entities.Field", "Field")
-                        .WithMany("Reviews")
-                        .HasForeignKey("FieldId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
                     b.Navigation("Booking");
 
-                    b.Navigation("Customer");
+                    b.Navigation("Complex");
 
-                    b.Navigation("Field");
+                    b.Navigation("Customer");
                 });
 
             modelBuilder.Entity("FootballField.API.Entities.TimeSlot", b =>
@@ -1034,6 +1034,8 @@ namespace FootballField.API.Migrations
                     b.Navigation("ComplexImages");
 
                     b.Navigation("Fields");
+
+                    b.Navigation("Reviews");
                 });
 
             modelBuilder.Entity("FootballField.API.Entities.Field", b =>
@@ -1041,8 +1043,6 @@ namespace FootballField.API.Migrations
                     b.Navigation("Bookings");
 
                     b.Navigation("FavoritedBy");
-
-                    b.Navigation("Reviews");
 
                     b.Navigation("TimeSlots");
                 });

@@ -1,11 +1,8 @@
 using AutoMapper;
 using FootballField.API.Entities;
 using FootballField.API.Dtos.Complex;
-<<<<<<< HEAD
 using FootballField.API.Dtos.TimeSlot;
 using FootballField.API.Dtos.Field;
-=======
->>>>>>> origin/Vu
 using FootballField.API.Repositories.Interfaces;
 using FootballField.API.Services.Interfaces;
 
@@ -14,13 +11,12 @@ namespace FootballField.API.Services.Implements
     public class ComplexService : IComplexService
     {
         private readonly IComplexRepository _complexRepository;
-<<<<<<< HEAD
         private readonly IUserRepository _userRepository;
         private readonly IBookingRepository _bookingRepository;
         private readonly IMapper _mapper;
 
         public ComplexService(
-            IComplexRepository complexRepository, 
+            IComplexRepository complexRepository,
             IUserRepository userRepository,
             IBookingRepository bookingRepository,
             IMapper mapper)
@@ -28,13 +24,6 @@ namespace FootballField.API.Services.Implements
             _complexRepository = complexRepository;
             _userRepository = userRepository;
             _bookingRepository = bookingRepository;
-=======
-        private readonly IMapper _mapper;
-
-        public ComplexService(IComplexRepository complexRepository, IMapper mapper)
-        {
-            _complexRepository = complexRepository;
->>>>>>> origin/Vu
             _mapper = mapper;
         }
 
@@ -63,7 +52,6 @@ namespace FootballField.API.Services.Implements
             return complex == null ? null : _mapper.Map<ComplexWithFieldsDto>(complex);
         }
 
-<<<<<<< HEAD
         public async Task<ComplexFullDetailsDto?> GetComplexWithFullDetailsAsync(int id, DateTime date)
         {
             var complex = await _complexRepository.GetComplexWithFullDetailsAsync(id);
@@ -97,11 +85,79 @@ namespace FootballField.API.Services.Implements
             return complexDto;
         }
 
-=======
->>>>>>> origin/Vu
         public async Task<IEnumerable<ComplexDto>> GetComplexesByOwnerIdAsync(int ownerId)
         {
             var complexes = await _complexRepository.GetByOwnerIdAsync(ownerId);
+            return _mapper.Map<IEnumerable<ComplexDto>>(complexes);
+        }
+        public async Task<IEnumerable<ComplexDto>> SearchComplexesAsync(
+    string? name,
+    string? street,
+    string? ward,
+    string? province,
+    decimal? minPrice = null,
+    decimal? maxPrice = null,
+    double? minRating = null,
+    double? maxRating = null)
+        {
+            // Lấy tất cả complexes kèm Fields, TimeSlots, Reviews
+            var complexes = await _complexRepository.GetAllAsync(c => !c.IsDeleted);
+
+            // Cần Include Fields.TimeSlots và Reviews
+            complexes = await _complexRepository.GetComplexesWithDetailsForSearchAsync();
+
+            // Filter theo tên
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                complexes = complexes.Where(c => !string.IsNullOrEmpty(c.Name) &&
+                    c.Name.Contains(name, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Filter theo Street
+            if (!string.IsNullOrWhiteSpace(street))
+            {
+                complexes = complexes.Where(c => !string.IsNullOrEmpty(c.Street) &&
+                    c.Street.Contains(street, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Filter theo Ward
+            if (!string.IsNullOrWhiteSpace(ward))
+            {
+                complexes = complexes.Where(c => !string.IsNullOrEmpty(c.Ward) &&
+                    c.Ward.Contains(ward, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Filter theo Province
+            if (!string.IsNullOrWhiteSpace(province))
+            {
+                complexes = complexes.Where(c => !string.IsNullOrEmpty(c.Province) &&
+                    c.Province.Contains(province, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Filter theo giá (từ TimeSlots)
+            if (minPrice.HasValue || maxPrice.HasValue)
+            {
+                complexes = complexes.Where(c =>
+                    c.Fields != null && c.Fields.Any(f =>
+                        f.TimeSlots != null && f.TimeSlots.Any(ts =>
+                            (!minPrice.HasValue || ts.Price >= minPrice.Value) &&
+                            (!maxPrice.HasValue || ts.Price <= maxPrice.Value)
+                        )
+                    )
+                );
+            }
+
+            // Filter theo rating (chỉ tính reviews visible và chưa bị xóa)
+            if (minRating.HasValue || maxRating.HasValue)
+            {
+                complexes = complexes.Where(c =>
+                    c.Reviews != null &&
+                    c.Reviews.Any(r => r.IsVisible && !r.IsDeleted) &&
+                    (!minRating.HasValue || c.Reviews.Where(r => r.IsVisible && !r.IsDeleted).Average(r => r.Rating) >= minRating.Value) &&
+                    (!maxRating.HasValue || c.Reviews.Where(r => r.IsVisible && !r.IsDeleted).Average(r => r.Rating) <= maxRating.Value)
+                );
+            }
+
             return _mapper.Map<IEnumerable<ComplexDto>>(complexes);
         }
 
@@ -110,19 +166,18 @@ namespace FootballField.API.Services.Implements
             var complex = _mapper.Map<Complex>(createComplexDto);
             complex.CreatedAt = DateTime.Now;
             complex.UpdatedAt = DateTime.Now;
-            
+
             var created = await _complexRepository.AddAsync(complex);
             return _mapper.Map<ComplexDto>(created);
         }
 
-<<<<<<< HEAD
         public async Task<ComplexDto> CreateComplexByOwnerAsync(CreateComplexByOwnerDto createComplexDto, int ownerId)
         {
             var complex = _mapper.Map<Complex>(createComplexDto);
             complex.OwnerId = ownerId;
             complex.CreatedAt = DateTime.Now;
             complex.UpdatedAt = DateTime.Now;
-            
+
             var created = await _complexRepository.AddAsync(complex);
             return _mapper.Map<ComplexDto>(created);
         }
@@ -131,23 +186,21 @@ namespace FootballField.API.Services.Implements
         {
             // Validate OwnerId phải tồn tại và có role Owner
             var owner = await _userRepository.GetUserByIdWithRoleAsync(createComplexDto.OwnerId);
-            
+
             if (owner == null)
                 throw new Exception("Không tìm thấy Owner với ID này");
-            
+
             if (owner.Role != UserRole.Owner && owner.Role != UserRole.Admin)
                 throw new Exception("User này không phải là Owner hoặc Admin, không thể tạo sân");
-            
+
             var complex = _mapper.Map<Complex>(createComplexDto);
             complex.CreatedAt = DateTime.Now;
             complex.UpdatedAt = DateTime.Now;
-            
+
             var created = await _complexRepository.AddAsync(complex);
             return _mapper.Map<ComplexDto>(created);
         }
 
-=======
->>>>>>> origin/Vu
         public async Task UpdateComplexAsync(int id, UpdateComplexDto updateComplexDto)
         {
             var existingComplex = await _complexRepository.GetByIdAsync(id);
@@ -156,7 +209,7 @@ namespace FootballField.API.Services.Implements
 
             _mapper.Map(updateComplexDto, existingComplex);
             existingComplex.UpdatedAt = DateTime.Now;
-            
+
             await _complexRepository.UpdateAsync(existingComplex);
         }
 
@@ -164,7 +217,6 @@ namespace FootballField.API.Services.Implements
         {
             await _complexRepository.SoftDeleteAsync(id);
         }
-<<<<<<< HEAD
 
         public async Task ApproveComplexAsync(int id)
         {
@@ -177,7 +229,7 @@ namespace FootballField.API.Services.Implements
 
             complex.Status = ComplexStatus.Approved;
             complex.UpdatedAt = DateTime.Now;
-            
+
             await _complexRepository.UpdateAsync(complex);
         }
 
@@ -192,11 +244,8 @@ namespace FootballField.API.Services.Implements
 
             complex.Status = ComplexStatus.Rejected;
             complex.UpdatedAt = DateTime.Now;
-            
+
             await _complexRepository.UpdateAsync(complex);
         }
-=======
-        
->>>>>>> origin/Vu
     }
 }

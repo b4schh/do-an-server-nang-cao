@@ -256,7 +256,7 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(e => e.BookingId).HasColumnName("booking_id").IsRequired();
             entity.Property(e => e.CustomerId).HasColumnName("customer_id").IsRequired();
-            entity.Property(e => e.FieldId).HasColumnName("field_id").IsRequired();
+            entity.Property(e => e.ComplexId).HasColumnName("complex_id").IsRequired();
             entity.Property(e => e.Rating).HasColumnName("rating").IsRequired();
             entity.Property(e => e.Comment).HasColumnName("comment").HasMaxLength(255).IsUnicode(true);
             entity.Property(e => e.IsVisible).HasColumnName("is_visible").HasDefaultValue(true);
@@ -265,7 +265,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("GETDATE()");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
 
-            entity.HasIndex(e => e.FieldId).HasDatabaseName("IX_Review_FieldId");
+            entity.HasIndex(e => e.ComplexId).HasDatabaseName("IX_Review_ComplexId");
 
             entity.ToTable(tb =>
             {
@@ -283,9 +283,9 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.CustomerId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            entity.HasOne(e => e.Field)
+            entity.HasOne(e => e.Complex)
                 .WithMany(e => e.Reviews)
-                .HasForeignKey(e => e.FieldId)
+                .HasForeignKey(e => e.ComplexId)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 

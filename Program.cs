@@ -29,11 +29,13 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 // ========== ĐĂNG KÝ REPOSITORIES ==========
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IComplexRepository, ComplexRepository>();
+builder.Services.AddScoped<IFieldRepository, FieldRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 
 // ========== ĐĂNG KÝ SERVICES ==========
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IComplexService, ComplexService>();
+builder.Services.AddScoped<IFieldService, FieldService>();
 builder.Services.AddScoped<IComplexImageService, ComplexImageService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
@@ -164,6 +166,16 @@ builder.Services.AddCors(options =>
 
 // Build app
 var app = builder.Build();
+
+// Áp dụng Migration tự động
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate(); // tự động tạo DB nếu chưa có
+
+    // Seed dữ liệu mẫu
+    db.SeedData();
+}
 
 app.UseMiddleware<ExceptionMiddleware>();
 

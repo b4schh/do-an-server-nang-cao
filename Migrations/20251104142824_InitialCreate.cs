@@ -354,7 +354,7 @@ namespace FootballField.API.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     booking_id = table.Column<int>(type: "int", nullable: false),
                     customer_id = table.Column<int>(type: "int", nullable: false),
-                    field_id = table.Column<int>(type: "int", nullable: false),
+                    complex_id = table.Column<int>(type: "int", nullable: false),
                     rating = table.Column<byte>(type: "tinyint", nullable: false),
                     comment = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     is_visible = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
@@ -374,9 +374,9 @@ namespace FootballField.API.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_REVIEW_FIELD_field_id",
-                        column: x => x.field_id,
-                        principalTable: "FIELD",
+                        name: "FK_REVIEW_COMPLEX_complex_id",
+                        column: x => x.complex_id,
+                        principalTable: "COMPLEX",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "FK_REVIEW_USER_customer_id",
@@ -464,14 +464,14 @@ namespace FootballField.API.Migrations
                 column: "booking_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Review_ComplexId",
+                table: "REVIEW",
+                column: "complex_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_REVIEW_customer_id",
                 table: "REVIEW",
                 column: "customer_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Review_FieldId",
-                table: "REVIEW",
-                column: "field_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_SYSTEM_CONFIG_config_key",

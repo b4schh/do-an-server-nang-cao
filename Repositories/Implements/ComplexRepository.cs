@@ -33,7 +33,6 @@ namespace FootballField.API.Repositories.Implements
                 .FirstOrDefaultAsync(c => c.Id == complexId && !c.IsDeleted);
         }
 
-<<<<<<< HEAD
         public async Task<Complex?> GetComplexWithFullDetailsAsync(int complexId)
         {
             return await _dbSet
@@ -42,8 +41,15 @@ namespace FootballField.API.Repositories.Implements
                 .Include(c => c.ComplexImages)
                 .FirstOrDefaultAsync(c => c.Id == complexId && !c.IsDeleted);
         }
-=======
-      
->>>>>>> origin/Vu
+
+        public async Task<IEnumerable<Complex>> GetComplexesWithDetailsForSearchAsync()
+        {
+            return await _dbSet
+                .Include(c => c.Fields.Where(f => !f.IsDeleted))
+                    .ThenInclude(f => f.TimeSlots.Where(ts => ts.IsActive))
+                .Include(c => c.Reviews.Where(r => !r.IsDeleted && r.IsVisible))
+                .Where(c => !c.IsDeleted)
+                .ToListAsync();
+        }
     }
 }
