@@ -1,8 +1,11 @@
 using AutoMapper;
 using FootballField.API.Entities;
 using FootballField.API.Dtos.Complex;
+<<<<<<< HEAD
 using FootballField.API.Dtos.TimeSlot;
 using FootballField.API.Dtos.Field;
+=======
+>>>>>>> origin/Vu
 using FootballField.API.Repositories.Interfaces;
 using FootballField.API.Services.Interfaces;
 
@@ -11,6 +14,7 @@ namespace FootballField.API.Services.Implements
     public class ComplexService : IComplexService
     {
         private readonly IComplexRepository _complexRepository;
+<<<<<<< HEAD
         private readonly IUserRepository _userRepository;
         private readonly IBookingRepository _bookingRepository;
         private readonly IMapper _mapper;
@@ -24,6 +28,13 @@ namespace FootballField.API.Services.Implements
             _complexRepository = complexRepository;
             _userRepository = userRepository;
             _bookingRepository = bookingRepository;
+=======
+        private readonly IMapper _mapper;
+
+        public ComplexService(IComplexRepository complexRepository, IMapper mapper)
+        {
+            _complexRepository = complexRepository;
+>>>>>>> origin/Vu
             _mapper = mapper;
         }
 
@@ -52,6 +63,7 @@ namespace FootballField.API.Services.Implements
             return complex == null ? null : _mapper.Map<ComplexWithFieldsDto>(complex);
         }
 
+<<<<<<< HEAD
         public async Task<ComplexFullDetailsDto?> GetComplexWithFullDetailsAsync(int id, DateTime date)
         {
             var complex = await _complexRepository.GetComplexWithFullDetailsAsync(id);
@@ -85,6 +97,8 @@ namespace FootballField.API.Services.Implements
             return complexDto;
         }
 
+=======
+>>>>>>> origin/Vu
         public async Task<IEnumerable<ComplexDto>> GetComplexesByOwnerIdAsync(int ownerId)
         {
             var complexes = await _complexRepository.GetByOwnerIdAsync(ownerId);
@@ -101,6 +115,7 @@ namespace FootballField.API.Services.Implements
             return _mapper.Map<ComplexDto>(created);
         }
 
+<<<<<<< HEAD
         public async Task<ComplexDto> CreateComplexByOwnerAsync(CreateComplexByOwnerDto createComplexDto, int ownerId)
         {
             var complex = _mapper.Map<Complex>(createComplexDto);
@@ -131,6 +146,8 @@ namespace FootballField.API.Services.Implements
             return _mapper.Map<ComplexDto>(created);
         }
 
+=======
+>>>>>>> origin/Vu
         public async Task UpdateComplexAsync(int id, UpdateComplexDto updateComplexDto)
         {
             var existingComplex = await _complexRepository.GetByIdAsync(id);
@@ -147,6 +164,7 @@ namespace FootballField.API.Services.Implements
         {
             await _complexRepository.SoftDeleteAsync(id);
         }
+<<<<<<< HEAD
 
         public async Task ApproveComplexAsync(int id)
         {
@@ -177,5 +195,8 @@ namespace FootballField.API.Services.Implements
             
             await _complexRepository.UpdateAsync(complex);
         }
+=======
+        
+>>>>>>> origin/Vu
     }
 }

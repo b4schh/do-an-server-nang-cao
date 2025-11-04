@@ -46,9 +46,13 @@ public class MinioStorageService : IStorageService
             .WithObjectSize(stream.Length)
             .WithContentType(string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType), ct);
 
+<<<<<<< HEAD
         // Trả về relative path thay vì full URL
         var encoded = HttpUtility.UrlPathEncode(objectName);
         return $"/{_settings.BucketName}/{encoded}";
+=======
+        return await GetPublicUrl(objectName);
+>>>>>>> origin/Vu
     }
 
     public Task<string> GetPublicUrl(string objectName)
@@ -60,6 +64,7 @@ public class MinioStorageService : IStorageService
         return Task.FromResult(url);
     }
 
+<<<<<<< HEAD
     public string GetFullUrl(string relativePath)
     {
         if (string.IsNullOrEmpty(relativePath))
@@ -73,6 +78,8 @@ public class MinioStorageService : IStorageService
         return $"{_settings.BaseUrl.TrimEnd('/')}{relativePath}";
     }
 
+=======
+>>>>>>> origin/Vu
     public async Task<string> GetPresignedUrlAsync(string objectName, TimeSpan expiry, CancellationToken ct = default)
     {
         var args = new PresignedGetObjectArgs()

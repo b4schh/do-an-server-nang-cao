@@ -1,11 +1,16 @@
 using FootballField.API.Dtos;
 using FootballField.API.Dtos.Complex;
 using FootballField.API.Services.Interfaces;
+<<<<<<< HEAD
 using FootballField.API.Repositories.Interfaces;
 using FootballField.API.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+=======
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+>>>>>>> origin/Vu
 
 namespace FootballField.API.Controllers
 {
@@ -14,6 +19,7 @@ namespace FootballField.API.Controllers
     public class ComplexesController : ControllerBase
     {
         private readonly IComplexService _complexService;
+<<<<<<< HEAD
         private readonly IUserRepository _userRepository;
 
         public ComplexesController(IComplexService complexService, IUserRepository userRepository)
@@ -23,6 +29,14 @@ namespace FootballField.API.Controllers
         }
 
         // Lấy tất cả Complexes phân trang
+=======
+
+        public ComplexesController(IComplexService complexService)
+        {
+            _complexService = complexService;
+        }
+
+>>>>>>> origin/Vu
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
@@ -30,29 +44,45 @@ namespace FootballField.API.Controllers
             var response = new ApiPagedResponse<ComplexDto>(complexes, pageIndex, pageSize, totalCount, "Lấy danh sách sân thành công");
             return Ok(response);
         }
+<<<<<<< HEAD
         
         // Lấy Complex theo ID
+=======
+
+>>>>>>> origin/Vu
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
             var complex = await _complexService.GetComplexByIdAsync(id);
             if (complex == null)
+<<<<<<< HEAD
                 return NotFound(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
+=======
+                return Ok(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
+>>>>>>> origin/Vu
 
             return Ok(ApiResponse<ComplexDto>.Ok(complex, "Lấy thông tin sân thành công"));
         }
 
+<<<<<<< HEAD
         // Lấy Complex kèm Fields
+=======
+>>>>>>> origin/Vu
         [HttpGet("{id}/with-fields")]
         public async Task<IActionResult> GetWithFields(int id)
         {
             var complex = await _complexService.GetComplexWithFieldsAsync(id);
             if (complex == null)
+<<<<<<< HEAD
                 return NotFound(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
+=======
+                return Ok(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
+>>>>>>> origin/Vu
 
             return Ok(ApiResponse<ComplexWithFieldsDto>.Ok(complex, "Lấy thông tin sân thành công"));
         }
 
+<<<<<<< HEAD
         // Lấy Complex kèm Fields và Timeslots đầy đủ với trạng thái availability
         [HttpGet("{id}/full-details")]
         public async Task<IActionResult> GetFullDetails(int id, [FromQuery] DateTime? date = null)
@@ -107,12 +137,17 @@ namespace FootballField.API.Controllers
         [HttpGet("owner/{ownerId}")]
         [Authorize]
         [Obsolete("Use GET /api/complexes/admin/owner/{ownerId} or GET /api/complexes/owner/my-complexes instead")]
+=======
+        [HttpGet("owner/{ownerId}")]
+        [Authorize]
+>>>>>>> origin/Vu
         public async Task<IActionResult> GetByOwnerId(int ownerId)
         {
             var complexes = await _complexService.GetComplexesByOwnerIdAsync(ownerId);
             return Ok(ApiResponse<IEnumerable<ComplexDto>>.Ok(complexes, "Lấy danh sách sân thành công"));
         }
 
+<<<<<<< HEAD
         // Tạo Complex mới (cũ)
         [HttpPost]
         [Authorize(Roles = "Admin,Owner")]
@@ -153,12 +188,24 @@ namespace FootballField.API.Controllers
         }
 
         // Cập nhật Complex
+=======
+      
+        [HttpPost]
+        [Authorize(Roles = "Admin,Owner")]
+        public async Task<IActionResult> Create([FromBody] CreateComplexDto createComplexDto)
+        {
+            var created = await _complexService.CreateComplexAsync(createComplexDto);
+            return Ok(ApiResponse<ComplexDto>.Ok(created, "Tạo sân thành công", 201));
+        }
+
+>>>>>>> origin/Vu
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateComplexDto updateComplexDto)
         {
             var existing = await _complexService.GetComplexByIdAsync(id);
             if (existing == null)
+<<<<<<< HEAD
                 return NotFound(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
 
             await _complexService.UpdateComplexAsync(id, updateComplexDto);
@@ -166,12 +213,22 @@ namespace FootballField.API.Controllers
         }
 
         // Xóa Complex
+=======
+                return Ok(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
+
+            await _complexService.UpdateComplexAsync(id, updateComplexDto);
+            return Ok(ApiResponse<string>.Ok(null, "Cập nhật sân thành công"));
+        }
+
+       
+>>>>>>> origin/Vu
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> Delete(int id)
         {
             var existing = await _complexService.GetComplexByIdAsync(id);
             if (existing == null)
+<<<<<<< HEAD
                 return NotFound(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
 
             await _complexService.SoftDeleteComplexAsync(id);
@@ -208,6 +265,12 @@ namespace FootballField.API.Controllers
             {
                 return BadRequest(ApiResponse<string>.Fail(ex.Message, 400));
             }
+=======
+                return Ok(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
+
+            await _complexService.SoftDeleteComplexAsync(id);
+            return Ok(ApiResponse<string>.Ok(null, "Xóa sân thành công"));
+>>>>>>> origin/Vu
         }
     }
 }

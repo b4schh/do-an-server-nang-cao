@@ -1,7 +1,11 @@
 services:
   minio:
     image: minio/minio
+<<<<<<< HEAD
     container_name: minio-do-an-server
+=======
+    container_name: minio
+>>>>>>> origin/Vu
     ports:
       - "9000:9000"   # API
       - "9001:9001"   # Console UI
@@ -9,5 +13,9 @@ services:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: admin123
     volumes:
+<<<<<<< HEAD
       - D:/MinIO/minio-data-do-an-server:/data
+=======
+      - ./minio-data:/data
+>>>>>>> origin/Vu
     command: server /data --console-address ":9001"

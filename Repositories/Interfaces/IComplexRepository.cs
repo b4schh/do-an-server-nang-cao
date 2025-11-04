@@ -7,6 +7,9 @@ namespace FootballField.API.Repositories.Interfaces
         Task<IEnumerable<Complex>> GetByOwnerIdAsync(int ownerId);
         Task<IEnumerable<Complex>> GetActiveComplexesAsync();
         Task<Complex?> GetComplexWithFieldsAsync(int complexId);
+<<<<<<< HEAD
         Task<Complex?> GetComplexWithFullDetailsAsync(int complexId);
+=======
+>>>>>>> origin/Vu
     }
 }
