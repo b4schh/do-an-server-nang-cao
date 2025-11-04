@@ -12,6 +12,9 @@ using FootballField.API.Repositories.Interfaces;
 using FootballField.API.Repositories.Implements;
 using FootballField.API.Services.Interfaces;
 using FootballField.API.Services.Implements;
+using Minio;
+using FootballField.API.Storage;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,9 +28,12 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // ========== ĐĂNG KÝ REPOSITORIES ==========
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IComplexRepository, ComplexRepository>();
 
 // ========== ĐĂNG KÝ SERVICES ==========
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IComplexService, ComplexService>();
+builder.Services.AddScoped<IComplexImageService, ComplexImageService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 // ========== ĐĂNG KÝ UTILITIES ==========
@@ -113,6 +119,36 @@ builder.Services.AddSwaggerGen(c =>
         Example = new OpenApiString("HH:mm:ss")
     });
 });
+
+// Bind options
+builder.Services.Configure<MinioSettings>(builder.Configuration.GetSection("Minio"));
+
+// File upload limit
+builder.Services.Configure<FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 20_000_000;
+});
+
+// Đăng ký MinioClient qua DI
+builder.Services.AddSingleton<IMinioClient>(sp =>
+{
+    var cfg = sp.GetRequiredService<IConfiguration>().GetSection("Minio");
+    var endpoint = cfg["Endpoint"]!;
+    var accessKey = cfg["AccessKey"]!;
+    var secretKey = cfg["SecretKey"]!;
+    var withSSL = bool.TryParse(cfg["WithSSL"], out var ssl) && ssl;
+
+    var client = new MinioClient()
+        .WithEndpoint(endpoint)
+        .WithCredentials(accessKey, secretKey);
+
+    if (withSSL) client = client.WithSSL();
+
+    return client.Build();
+});
+
+// Đăng ký storage service
+builder.Services.AddSingleton<IStorageService, MinioStorageService>();
 
 // Cho phép gọi API từ frontend khác domain
 builder.Services.AddCors(options =>

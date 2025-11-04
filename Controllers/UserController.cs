@@ -33,7 +33,7 @@ namespace FootballField.API.Controllers
         {
             var user = await _userService.GetUserByIdAsync(id);
             if (user == null)
-                return Ok(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
 
             return Ok(ApiResponse<UserDto>.Ok(user, "Lấy thông tin người dùng thành công"));
         }
