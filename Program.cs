@@ -12,29 +12,41 @@ using FootballField.API.Repositories.Interfaces;
 using FootballField.API.Repositories.Implements;
 using FootballField.API.Services.Interfaces;
 using FootballField.API.Services.Implements;
+using Minio;
+using FootballField.API.Storage;
+using Microsoft.AspNetCore.Http.Features;
+using System.Security.Claims;
+using FootballField.API.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Đọc Connection String từ appsettings.json
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// -------------------- Configuration & DbContext --------------------
+var configuration = builder.Configuration;
+var connectionString = configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
-// ========== ĐĂNG KÝ AUTOMAPPER ==========
+// -------------------- AutoMapper --------------------
+// Keep AddAutoMapper (ensure packages match versions in csproj)
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// ========== ĐĂNG KÝ REPOSITORIES ==========
+// -------------------- Repositories --------------------
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+builder.Services.AddScoped<IComplexRepository, ComplexRepository>();
 
-// ========== ĐĂNG KÝ SERVICES ==========
+// -------------------- Services --------------------
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IComplexService, ComplexService>();
+builder.Services.AddScoped<IComplexImageService, ComplexImageService>();
 
-// ========== ĐĂNG KÝ UTILITIES ==========
+// Utilities
 builder.Services.AddScoped<JwtHelper>();
 
-// ========== CẤU HÌNH JWT AUTHENTICATION ==========
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+// -------------------- JWT Authentication --------------------
+// Read section "JwtSettings" from appsettings.json
+var jwtSettings = configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
 var issuer = jwtSettings["Issuer"];
 var audience = jwtSettings["Audience"];
@@ -55,13 +67,25 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = issuer,
         ValidAudience = audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-        ClockSkew = TimeSpan.Zero
+        ClockSkew = TimeSpan.Zero,
+        RoleClaimType = ClaimTypes.Role
     };
 });
 
-builder.Services.AddAuthorization();
+// -------------------- Authorization Policies --------------------
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireAdminRole", policy =>
+        policy.RequireRole(UserRole.Admin.ToString()));
 
-// Cấu hình dịch vụ (Swagger, Controller, CORS, Logging…)
+    options.AddPolicy("RequireOwnerRole", policy =>
+        policy.RequireRole(UserRole.Owner.ToString(), UserRole.Admin.ToString()));
+
+    options.AddPolicy("RequireCustomerRole", policy =>
+        policy.RequireRole(UserRole.Customer.ToString(), UserRole.Owner.ToString(), UserRole.Admin.ToString()));
+});
+
+// -------------------- Controllers / JSON --------------------
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -70,7 +94,7 @@ builder.Services.AddControllers()
 
 builder.Services.AddEndpointsApiExplorer();
 
-// Cấu hình Swagger với JWT Authentication
+// -------------------- Swagger (with JWT) --------------------
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -80,10 +104,9 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API for managing football field bookings"
     });
 
-    // Thêm định nghĩa bảo mật JWT
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header. Just enter your token below - no need for 'Bearer' prefix",
+        Description = "JWT Authorization header — enter Bearer <token>",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
@@ -114,7 +137,34 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Cho phép gọi API từ frontend khác domain
+// -------------------- Options / Minio / Storage --------------------
+builder.Services.Configure<MinioSettings>(configuration.GetSection("Minio"));
+
+// File upload limit (e.g. 20MB)
+builder.Services.Configure<FormOptions>(o => {
+    o.MultipartBodyLengthLimit = 20_000_000;
+});
+
+builder.Services.AddSingleton<IMinioClient>(sp =>
+{
+    var cfg = sp.GetRequiredService<IConfiguration>().GetSection("Minio");
+    var endpoint = cfg["Endpoint"]!;
+    var accessKey = cfg["AccessKey"]!;
+    var secretKey = cfg["SecretKey"]!;
+    var withSSL = bool.TryParse(cfg["WithSSL"], out var ssl) && ssl;
+
+    var client = new MinioClient()
+        .WithEndpoint(endpoint)
+        .WithCredentials(accessKey, secretKey);
+
+    if (withSSL) client = client.WithSSL();
+
+    return client.Build();
+});
+
+builder.Services.AddSingleton<IStorageService, MinioStorageService>();
+
+// -------------------- CORS --------------------
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -125,9 +175,36 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Build app
+// -------------------- Build app --------------------
 var app = builder.Build();
 
+// -------------------- Seed database on startup --------------------
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        var context = services.GetRequiredService<ApplicationDbContext>();
+
+        context.Database.Migrate();
+
+        logger.LogInformation("DB Connection: {Conn}", context.Database.GetDbConnection().ConnectionString);
+
+        context.SeedData();
+
+        logger.LogInformation("Database seeding completed.");
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Lỗi khi seed dữ liệu vào database");
+        // Không throw để ứng dụng vẫn có thể boot nếu bạn muốn; tuy nhiên giữ throw giúp phát hiện lỗi sớm.
+        throw;
+    }
+}
+
+// -------------------- Middleware pipeline --------------------
 app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -144,7 +221,6 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
 
 app.MapControllers();
 
