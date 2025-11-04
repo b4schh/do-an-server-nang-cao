@@ -30,5 +30,10 @@ namespace FootballField.API.Repositories.Implements
         {
             return await _dbSet.Where(u => u.Role == role && !u.IsDeleted).ToListAsync();
         }
+
+        public async Task<User?> GetUserByIdWithRoleAsync(int userId)
+        {
+            return await _dbSet.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+        }
     }
 }
