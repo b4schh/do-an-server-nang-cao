@@ -29,6 +29,7 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 // ========== ĐĂNG KÝ REPOSITORIES ==========
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IComplexRepository, ComplexRepository>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 
 // ========== ĐĂNG KÝ SERVICES ==========
 builder.Services.AddScoped<IUserService, UserService>();

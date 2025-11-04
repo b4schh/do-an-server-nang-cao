@@ -64,22 +64,25 @@ namespace FootballField.API.Controllers
                 var fileName = $"complex-{complexId}-{Guid.NewGuid()}{fileExtension}";
                 var objectName = $"complexes/{fileName}";
 
-                // Upload to MinIO
-                string imageUrl;
+                // Upload to MinIO - nhận về relative path
+                string relativePath;
                 using (var stream = file.OpenReadStream())
                 {
-                    imageUrl = await _storageService.UploadAsync(stream, objectName, file.ContentType);
+                    relativePath = await _storageService.UploadAsync(stream, objectName, file.ContentType);
                 }
 
-                // Save to database
+                // Save relative path to database
                 var complexImageDto = new ComplexImageCreateDto
                 {
                     ComplexId = complexId,
-                    ImageUrl = imageUrl,
+                    ImageUrl = relativePath, // Lưu relative path
                     Description = description
                 };
 
                 var result = await _complexImageService.CreateAsync(complexImageDto);
+                
+                // Trả về full URL cho client
+                result.ImageUrl = _storageService.GetFullUrl(result.ImageUrl);
 
                 return Ok(ApiResponse<ComplexImageResponseDto>.Ok(result, "Upload ảnh thành công!"));
             }
@@ -95,6 +98,13 @@ namespace FootballField.API.Controllers
             try
             {
                 var images = await _complexImageService.GetByComplexIdAsync(complexId);
+                
+                // Chuyển relative path thành full URL trước khi trả về
+                foreach (var image in images)
+                {
+                    image.ImageUrl = _storageService.GetFullUrl(image.ImageUrl);
+                }
+                
                 return Ok(ApiResponse<List<ComplexImageResponseDto>>.Ok(images, "Lấy danh sách ảnh thành công!"));
             }
             catch (Exception ex)
@@ -117,19 +127,25 @@ namespace FootballField.API.Controllers
 
                 var image = await _complexImageService.GetByIdAsync(imageId);
 
-
-                // Delete from MinIO
+                // Delete from MinIO - parse object name từ relative path
                 if (!string.IsNullOrEmpty(image.ImageUrl))
                 {
-                    var uri = new Uri(image.ImageUrl);
-                    var objectName = uri.AbsolutePath.TrimStart('/').Substring(image.ImageUrl.IndexOf('/') + 1);
-                    await _storageService.DeleteAsync(objectName);
+                    // ImageUrl giờ là: /football-field-images/complexes/complex-1-xxx.webp
+                    // Cần extract: complexes/complex-1-xxx.webp
+                    var bucketName = "football-field-images";
+                    var relativePath = image.ImageUrl.TrimStart('/');
+                    
+                    if (relativePath.StartsWith(bucketName + "/"))
+                    {
+                        var objectName = relativePath.Substring(bucketName.Length + 1);
+                        await _storageService.DeleteAsync(objectName);
+                    }
                 }
 
                 // Delete from database
                 await _complexImageService.DeleteAsync(imageId);
 
-                return Ok(ApiResponse<object>.Ok(null, "Xóa ảnh thành công!"));
+                return Ok(ApiResponse<object?>.Ok(null, "Xóa ảnh thành công!"));
             }
 
             catch (Exception ex)

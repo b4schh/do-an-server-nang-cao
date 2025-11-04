@@ -8,5 +8,6 @@ namespace FootballField.API.Repositories.Interfaces
         Task<User?> GetByPhoneAsync(string phone);
         Task<bool> EmailExistsAsync(string email);
         Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role);
+        Task<User?> GetUserByIdWithRoleAsync(int userId);
     }
 }
