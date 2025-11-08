@@ -6,7 +6,8 @@ public class Review
     public int BookingId { get; set; }
     public int CustomerId { get; set; }
     public int ComplexId { get; set; }
-    public byte Rating { get; set; } // 1-5
+    public byte Rating { get; set; } 
+    public int FieldId { get; set; }
     public string? Comment { get; set; }
     public bool IsVisible { get; set; } = true;
     public bool IsDeleted { get; set; } = false;
@@ -18,4 +19,5 @@ public class Review
     public Booking Booking { get; set; } = null!;
     public User Customer { get; set; } = null!;
     public Complex Complex { get; set; } = null!;
+    public Field Field { get; set; } = null!;
 }

@@ -59,10 +59,8 @@ namespace FootballField.API.Services.Implements
 
             var complexDto = _mapper.Map<ComplexFullDetailsDto>(complex);
 
-            // Lấy danh sách booking cho ngày được chọn từ Repository
             var bookedTimeSlots = await _bookingRepository.GetBookedTimeSlotIdsForComplexAsync(id, date);
 
-            // Map fields với timeslots và trạng thái availability
             complexDto.Fields = complex.Fields.Select(f => new FieldWithTimeSlotsDto
             {
                 Id = f.Id,
@@ -78,7 +76,7 @@ namespace FootballField.API.Services.Implements
                     EndTime = ts.EndTime,
                     Price = ts.Price,
                     IsActive = ts.IsActive,
-                    IsBooked = bookedTimeSlots.Contains((f.Id, ts.Id))
+                    IsBooked = bookedTimeSlots.Contains(ts.Id)
                 }).OrderBy(ts => ts.StartTime)
             });
 

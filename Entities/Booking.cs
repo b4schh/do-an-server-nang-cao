@@ -35,8 +35,10 @@ public class Booking
     public string? Note { get; set; }
     public DateTime? CancelledAt { get; set; }
     public int? CancelledBy { get; set; }
+    public string? CancellationReason { get; set; } 
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    public bool IsCompleted { get; set; } = false;
 
     // Navigation properties
     public Field Field { get; set; } = null!;

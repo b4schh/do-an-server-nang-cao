@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FootballField.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251104142824_InitialCreate")]
+    [Migration("20251108040947_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -42,6 +42,9 @@ namespace FootballField.API.Migrations
                         .HasColumnType("tinyint")
                         .HasColumnName("booking_status");
 
+                    b.Property<string>("CancellationReason")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("CancelledAt")
                         .HasColumnType("datetime2")
                         .HasColumnName("cancelled_at");
@@ -67,6 +70,9 @@ namespace FootballField.API.Migrations
                     b.Property<int>("FieldId")
                         .HasColumnType("int")
                         .HasColumnName("field_id");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Note")
                         .HasMaxLength(255)
@@ -524,6 +530,9 @@ namespace FootballField.API.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("deleted_at");
 
+                    b.Property<int>("FieldId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -554,6 +563,8 @@ namespace FootballField.API.Migrations
                         .HasDatabaseName("IX_Review_ComplexId");
 
                     b.HasIndex("CustomerId");
+
+                    b.HasIndex("FieldId");
 
                     b.ToTable("REVIEW", null, t =>
                         {
@@ -988,11 +999,19 @@ namespace FootballField.API.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("FootballField.API.Entities.Field", "Field")
+                        .WithMany()
+                        .HasForeignKey("FieldId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Booking");
 
                     b.Navigation("Complex");
 
                     b.Navigation("Customer");
+
+                    b.Navigation("Field");
                 });
 
             modelBuilder.Entity("FootballField.API.Entities.TimeSlot", b =>

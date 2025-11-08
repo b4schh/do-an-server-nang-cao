@@ -309,8 +309,10 @@ namespace FootballField.API.Migrations
                     note = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     cancelled_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     cancelled_by = table.Column<int>(type: "int", nullable: true),
+                    CancellationReason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()")
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
+                    IsCompleted = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -356,6 +358,7 @@ namespace FootballField.API.Migrations
                     customer_id = table.Column<int>(type: "int", nullable: false),
                     complex_id = table.Column<int>(type: "int", nullable: false),
                     rating = table.Column<byte>(type: "tinyint", nullable: false),
+                    FieldId = table.Column<int>(type: "int", nullable: false),
                     comment = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     is_visible = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
@@ -378,6 +381,12 @@ namespace FootballField.API.Migrations
                         column: x => x.complex_id,
                         principalTable: "COMPLEX",
                         principalColumn: "id");
+                    table.ForeignKey(
+                        name: "FK_REVIEW_FIELD_FieldId",
+                        column: x => x.FieldId,
+                        principalTable: "FIELD",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_REVIEW_USER_customer_id",
                         column: x => x.customer_id,
@@ -472,6 +481,11 @@ namespace FootballField.API.Migrations
                 name: "IX_REVIEW_customer_id",
                 table: "REVIEW",
                 column: "customer_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_REVIEW_FieldId",
+                table: "REVIEW",
+                column: "FieldId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_SYSTEM_CONFIG_config_key",
