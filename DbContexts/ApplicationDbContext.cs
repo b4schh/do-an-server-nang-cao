@@ -190,27 +190,27 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.FieldId).HasColumnName("field_id").IsRequired();
             entity.Property(e => e.CustomerId).HasColumnName("customer_id").IsRequired();
             entity.Property(e => e.OwnerId).HasColumnName("owner_id").IsRequired();
-            entity.Property(e => e.BookingDate).HasColumnName("booking_date").IsRequired();
             entity.Property(e => e.TimeSlotId).HasColumnName("time_slot_id").IsRequired();
-            entity.Property(e => e.DepositAmount).HasColumnName("deposit_amount").IsRequired();
-            entity.Property(e => e.TotalAmount).HasColumnName("total_amount").IsRequired();
-            entity.Property(e => e.BookingStatus).HasColumnName("booking_status").IsRequired();
-            entity.Property(e => e.PaymentStatus).HasColumnName("payment_status").IsRequired();
-            entity.Property(e => e.PaymentMethod).HasColumnName("payment_method").HasMaxLength(50).IsUnicode(true);
-            entity.Property(e => e.TransactionId).HasColumnName("transaction_id").HasMaxLength(50);
+            entity.Property(e => e.BookingDate).HasColumnName("booking_date").IsRequired();
+            entity.Property(e => e.HoldExpiresAt).HasColumnName("hold_expires_at").IsRequired();
+            entity.Property(e => e.TotalAmount).HasColumnName("total_amount").HasColumnType("decimal(10,2)").IsRequired();
+            entity.Property(e => e.DepositAmount).HasColumnName("deposit_amount").HasColumnType("decimal(10,2)").IsRequired();
+            entity.Property(e => e.PaymentProofUrl).HasColumnName("payment_proof_url").IsUnicode(false);
             entity.Property(e => e.Note).HasColumnName("note").HasMaxLength(255).IsUnicode(true);
-            entity.Property(e => e.CancelledAt).HasColumnName("cancelled_at");
+            entity.Property(e => e.BookingStatus).HasColumnName("booking_status").IsRequired();
+            entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
+            entity.Property(e => e.ApprovedAt).HasColumnName("approved_at");
             entity.Property(e => e.CancelledBy).HasColumnName("cancelled_by");
+            entity.Property(e => e.CancelledAt).HasColumnName("cancelled_at");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("GETDATE()");
 
             // CHECK constraints
             entity.ToTable(tb =>
             {
-                tb.HasCheckConstraint("CK_Booking_Amount", "deposit_amount >= 0 AND total_amount >= deposit_amount");
-                tb.HasCheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 4");
-                tb.HasCheckConstraint("CK_Payment_Status", "payment_status BETWEEN 0 AND 3");
-                tb.HasCheckConstraint("CK_Booking_Date_Future", "booking_date >= GETDATE()");
+                tb.HasCheckConstraint("CK_Booking_TotalAmount", "total_amount > 0");
+                tb.HasCheckConstraint("CK_Booking_DepositAmount", "deposit_amount >= 0 AND deposit_amount <= total_amount");
+                tb.HasCheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 7");
             });
 
             // Indexes
@@ -238,6 +238,11 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.TimeSlot)
                 .WithMany(e => e.Bookings)
                 .HasForeignKey(e => e.TimeSlotId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.ApprovedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.ApprovedBy)
                 .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(e => e.CancelledByUser)

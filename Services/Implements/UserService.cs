@@ -47,7 +47,7 @@ namespace FootballField.API.Services.Implements
             var user = _mapper.Map<User>(createUserDto);
             user.CreatedAt = DateTime.Now;
             user.UpdatedAt = DateTime.Now;
-            
+
             var created = await _userRepository.AddAsync(user);
             return _mapper.Map<UserDto>(created);
         }
@@ -75,7 +75,7 @@ namespace FootballField.API.Services.Implements
 
             await _userRepository.UpdateAsync(existingUser);
         }
-        
+
         public async Task SoftDeleteUserAsync(int id)
         {
             await _userRepository.SoftDeleteAsync(id);

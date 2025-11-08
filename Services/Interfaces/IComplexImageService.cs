@@ -5,7 +5,7 @@ namespace FootballField.API.Services.Interfaces;
 public interface IComplexImageService
 {
     Task<ComplexImageResponseDto> CreateAsync(ComplexImageCreateDto dto);
-    Task<ComplexImageResponseDto> GetByIdAsync(long id);
+    Task<ComplexImageResponseDto> GetByIdAsync(int id);
     Task<List<ComplexImageResponseDto>> GetByComplexIdAsync(int complexId);
-    Task DeleteAsync(long id);
+    Task DeleteAsync(int id);
 }

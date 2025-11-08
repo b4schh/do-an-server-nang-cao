@@ -6,6 +6,7 @@ using FootballField.API.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.ComponentModel;
 
 namespace FootballField.API.Controllers
 {
@@ -217,6 +218,7 @@ namespace FootballField.API.Controllers
         }
 
         // Từ chối Complex
+        // [Description("")]
         [HttpPatch("{id}/reject")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Reject(int id)

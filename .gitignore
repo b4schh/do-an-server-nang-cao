@@ -445,3 +445,5 @@ tmp/
 # Backup files
 *.bak
 *.backup
+
+prompt/

@@ -51,11 +51,6 @@ namespace FootballField.API.Repositories.Implements
             return await _dbSet.FindAsync(id);
         }
 
-        public virtual async Task<T?> GetByIdAsync(long id)
-        {
-            return await _dbSet.FindAsync(id);
-        }
-
         public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> filter)
         {
             return await _dbSet.FirstOrDefaultAsync(filter);
@@ -102,23 +97,6 @@ namespace FootballField.API.Repositories.Implements
 
         // Soft delete
         public virtual async Task SoftDeleteAsync(int id)
-        {
-            var entity = await GetByIdAsync(id);
-            if (entity == null) return;
-
-            var isDeletedProperty = entity.GetType().GetProperty("IsDeleted");
-            var deletedAtProperty = entity.GetType().GetProperty("DeletedAt");
-
-            if (isDeletedProperty != null)
-                isDeletedProperty.SetValue(entity, true);
-
-            if (deletedAtProperty != null)
-                deletedAtProperty.SetValue(entity, DateTime.Now);
-
-            await UpdateAsync(entity);
-        }
-
-        public virtual async Task SoftDeleteAsync(long id)
         {
             var entity = await GetByIdAsync(id);
             if (entity == null) return;

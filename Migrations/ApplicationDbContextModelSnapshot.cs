@@ -31,6 +31,14 @@ namespace FootballField.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("approved_at");
+
+                    b.Property<int?>("ApprovedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("approved_by");
+
                     b.Property<DateTime>("BookingDate")
                         .HasColumnType("datetime2")
                         .HasColumnName("booking_date");
@@ -57,13 +65,17 @@ namespace FootballField.API.Migrations
                         .HasColumnType("int")
                         .HasColumnName("customer_id");
 
-                    b.Property<int>("DepositAmount")
-                        .HasColumnType("int")
+                    b.Property<decimal>("DepositAmount")
+                        .HasColumnType("decimal(10,2)")
                         .HasColumnName("deposit_amount");
 
                     b.Property<int>("FieldId")
                         .HasColumnType("int")
                         .HasColumnName("field_id");
+
+                    b.Property<DateTime>("HoldExpiresAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("hold_expires_at");
 
                     b.Property<string>("Note")
                         .HasMaxLength(255)
@@ -75,28 +87,18 @@ namespace FootballField.API.Migrations
                         .HasColumnType("int")
                         .HasColumnName("owner_id");
 
-                    b.Property<string>("PaymentMethod")
-                        .HasMaxLength(50)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("payment_method");
-
-                    b.Property<byte>("PaymentStatus")
-                        .HasColumnType("tinyint")
-                        .HasColumnName("payment_status");
+                    b.Property<string>("PaymentProofUrl")
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(max)")
+                        .HasColumnName("payment_proof_url");
 
                     b.Property<int>("TimeSlotId")
                         .HasColumnType("int")
                         .HasColumnName("time_slot_id");
 
-                    b.Property<int>("TotalAmount")
-                        .HasColumnType("int")
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(10,2)")
                         .HasColumnName("total_amount");
-
-                    b.Property<string>("TransactionId")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("transaction_id");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -105,6 +107,8 @@ namespace FootballField.API.Migrations
                         .HasDefaultValueSql("GETDATE()");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApprovedBy");
 
                     b.HasIndex("CancelledBy");
 
@@ -124,13 +128,11 @@ namespace FootballField.API.Migrations
 
                     b.ToTable("BOOKING", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Booking_Amount", "deposit_amount >= 0 AND total_amount >= deposit_amount");
+                            t.HasCheckConstraint("CK_Booking_DepositAmount", "deposit_amount >= 0 AND deposit_amount <= total_amount");
 
-                            t.HasCheckConstraint("CK_Booking_Date_Future", "booking_date >= GETDATE()");
+                            t.HasCheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 7");
 
-                            t.HasCheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 4");
-
-                            t.HasCheckConstraint("CK_Payment_Status", "payment_status BETWEEN 0 AND 3");
+                            t.HasCheckConstraint("CK_Booking_TotalAmount", "total_amount > 0");
                         });
                 });
 
@@ -844,6 +846,11 @@ namespace FootballField.API.Migrations
 
             modelBuilder.Entity("FootballField.API.Entities.Booking", b =>
                 {
+                    b.HasOne("FootballField.API.Entities.User", "ApprovedByUser")
+                        .WithMany()
+                        .HasForeignKey("ApprovedBy")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("FootballField.API.Entities.User", "CancelledByUser")
                         .WithMany()
                         .HasForeignKey("CancelledBy")
@@ -872,6 +879,8 @@ namespace FootballField.API.Migrations
                         .HasForeignKey("TimeSlotId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("ApprovedByUser");
 
                     b.Navigation("CancelledByUser");
 

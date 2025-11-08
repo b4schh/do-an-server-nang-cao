@@ -298,27 +298,27 @@ namespace FootballField.API.Migrations
                     field_id = table.Column<int>(type: "int", nullable: false),
                     customer_id = table.Column<int>(type: "int", nullable: false),
                     owner_id = table.Column<int>(type: "int", nullable: false),
-                    booking_date = table.Column<DateTime>(type: "datetime2", nullable: false),
                     time_slot_id = table.Column<int>(type: "int", nullable: false),
-                    deposit_amount = table.Column<int>(type: "int", nullable: false),
-                    total_amount = table.Column<int>(type: "int", nullable: false),
-                    booking_status = table.Column<byte>(type: "tinyint", nullable: false),
-                    payment_status = table.Column<byte>(type: "tinyint", nullable: false),
-                    payment_method = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    transaction_id = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    booking_date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    hold_expires_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    total_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    deposit_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    payment_proof_url = table.Column<string>(type: "varchar(max)", unicode: false, nullable: true),
                     note = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    cancelled_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    booking_status = table.Column<byte>(type: "tinyint", nullable: false),
+                    approved_by = table.Column<int>(type: "int", nullable: true),
+                    approved_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     cancelled_by = table.Column<int>(type: "int", nullable: true),
+                    cancelled_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
                     updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()")
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_BOOKING", x => x.id);
-                    table.CheckConstraint("CK_Booking_Amount", "deposit_amount >= 0 AND total_amount >= deposit_amount");
-                    table.CheckConstraint("CK_Booking_Date_Future", "booking_date >= GETDATE()");
-                    table.CheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 4");
-                    table.CheckConstraint("CK_Payment_Status", "payment_status BETWEEN 0 AND 3");
+                    table.CheckConstraint("CK_Booking_DepositAmount", "deposit_amount >= 0 AND deposit_amount <= total_amount");
+                    table.CheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 7");
+                    table.CheckConstraint("CK_Booking_TotalAmount", "total_amount > 0");
                     table.ForeignKey(
                         name: "FK_BOOKING_FIELD_field_id",
                         column: x => x.field_id,
@@ -328,6 +328,11 @@ namespace FootballField.API.Migrations
                         name: "FK_BOOKING_TIME_SLOT_time_slot_id",
                         column: x => x.time_slot_id,
                         principalTable: "TIME_SLOT",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "FK_BOOKING_USER_approved_by",
+                        column: x => x.approved_by,
+                        principalTable: "USER",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "FK_BOOKING_USER_cancelled_by",
@@ -384,6 +389,11 @@ namespace FootballField.API.Migrations
                         principalTable: "USER",
                         principalColumn: "id");
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BOOKING_approved_by",
+                table: "BOOKING",
+                column: "approved_by");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Booking_BookingDate_Status",

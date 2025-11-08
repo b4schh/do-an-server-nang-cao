@@ -15,6 +15,7 @@ using FootballField.API.Services.Implements;
 using Minio;
 using FootballField.API.Storage;
 using Microsoft.AspNetCore.Http.Features;
+using FootballField.API.BackgroundJobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,17 +30,22 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 // ========== ĐĂNG KÝ REPOSITORIES ==========
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IComplexRepository, ComplexRepository>();
+builder.Services.AddScoped<IComplexImageRepository, ComplexImageRepository>();
 builder.Services.AddScoped<IFieldRepository, FieldRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
 
 // ========== ĐĂNG KÝ SERVICES ==========
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IComplexService, ComplexService>();
 builder.Services.AddScoped<IComplexImageService, ComplexImageService>();
 builder.Services.AddScoped<IFieldService, FieldService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITimeSlotService, TimeSlotService>();
+
+// ========== ĐĂNG KÝ BACKGROUND SERVICES ==========
+builder.Services.AddHostedService<BookingExpirationBackgroundService>();
 
 // ========== ĐĂNG KÝ UTILITIES ==========
 builder.Services.AddScoped<JwtHelper>();
