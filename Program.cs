@@ -15,38 +15,43 @@ using FootballField.API.Services.Implements;
 using Minio;
 using FootballField.API.Storage;
 using Microsoft.AspNetCore.Http.Features;
-using System.Security.Claims;
-using FootballField.API.Entities;
+using FootballField.API.BackgroundJobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// -------------------- Configuration & DbContext --------------------
-var configuration = builder.Configuration;
-var connectionString = configuration.GetConnectionString("DefaultConnection");
+// Đọc Connection String từ appsettings.json
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
-// -------------------- AutoMapper --------------------
-// Keep AddAutoMapper (ensure packages match versions in csproj)
+// ========== ĐĂNG KÝ AUTOMAPPER ==========
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// -------------------- Repositories --------------------
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+// ========== ĐĂNG KÝ REPOSITORIES ==========
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IComplexRepository, ComplexRepository>();
+builder.Services.AddScoped<IComplexImageRepository, ComplexImageRepository>();
+builder.Services.AddScoped<IFieldRepository, FieldRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
 
-// -------------------- Services --------------------
-builder.Services.AddScoped<IUserService, UserService>();
+// ========== ĐĂNG KÝ SERVICES ==========
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IComplexService, ComplexService>();
 builder.Services.AddScoped<IComplexImageService, ComplexImageService>();
+builder.Services.AddScoped<IFieldService, FieldService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITimeSlotService, TimeSlotService>();
 
-// Utilities
+// ========== ĐĂNG KÝ BACKGROUND SERVICES ==========
+builder.Services.AddHostedService<BookingExpirationBackgroundService>();
+
+// ========== ĐĂNG KÝ UTILITIES ==========
 builder.Services.AddScoped<JwtHelper>();
 
-// -------------------- JWT Authentication --------------------
-// Read section "JwtSettings" from appsettings.json
-var jwtSettings = configuration.GetSection("JwtSettings");
+// ========== CẤU HÌNH JWT AUTHENTICATION ==========
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
 var issuer = jwtSettings["Issuer"];
 var audience = jwtSettings["Audience"];
@@ -67,25 +72,13 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = issuer,
         ValidAudience = audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-        ClockSkew = TimeSpan.Zero,
-        RoleClaimType = ClaimTypes.Role
+        ClockSkew = TimeSpan.Zero
     };
 });
 
-// -------------------- Authorization Policies --------------------
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("RequireAdminRole", policy =>
-        policy.RequireRole(UserRole.Admin.ToString()));
+builder.Services.AddAuthorization();
 
-    options.AddPolicy("RequireOwnerRole", policy =>
-        policy.RequireRole(UserRole.Owner.ToString(), UserRole.Admin.ToString()));
-
-    options.AddPolicy("RequireCustomerRole", policy =>
-        policy.RequireRole(UserRole.Customer.ToString(), UserRole.Owner.ToString(), UserRole.Admin.ToString()));
-});
-
-// -------------------- Controllers / JSON --------------------
+// Cấu hình dịch vụ (Swagger, Controller, CORS, Logging…)
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -94,7 +87,7 @@ builder.Services.AddControllers()
 
 builder.Services.AddEndpointsApiExplorer();
 
-// -------------------- Swagger (with JWT) --------------------
+// Cấu hình Swagger với JWT Authentication
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -104,9 +97,10 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API for managing football field bookings"
     });
 
+    // Thêm định nghĩa bảo mật JWT
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header — enter Bearer <token>",
+        Description = "JWT Authorization header. Just enter your token below - no need for 'Bearer' prefix",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
@@ -137,14 +131,16 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// -------------------- Options / Minio / Storage --------------------
-builder.Services.Configure<MinioSettings>(configuration.GetSection("Minio"));
+// Bind options
+builder.Services.Configure<MinioSettings>(builder.Configuration.GetSection("Minio"));
 
-// File upload limit (e.g. 20MB)
-builder.Services.Configure<FormOptions>(o => {
+// File upload limit
+builder.Services.Configure<FormOptions>(o =>
+{
     o.MultipartBodyLengthLimit = 20_000_000;
 });
 
+// Đăng ký MinioClient qua DI
 builder.Services.AddSingleton<IMinioClient>(sp =>
 {
     var cfg = sp.GetRequiredService<IConfiguration>().GetSection("Minio");
@@ -162,9 +158,10 @@ builder.Services.AddSingleton<IMinioClient>(sp =>
     return client.Build();
 });
 
+// Đăng ký storage service
 builder.Services.AddSingleton<IStorageService, MinioStorageService>();
 
-// -------------------- CORS --------------------
+// Cho phép gọi API từ frontend khác domain
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -175,36 +172,19 @@ builder.Services.AddCors(options =>
     });
 });
 
-// -------------------- Build app --------------------
+// Build app
 var app = builder.Build();
 
-// -------------------- Seed database on startup --------------------
+// Áp dụng Migration tự động
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    try
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        var context = services.GetRequiredService<ApplicationDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate(); // tự động tạo DB nếu chưa có
 
-        context.Database.Migrate();
-
-        logger.LogInformation("DB Connection: {Conn}", context.Database.GetDbConnection().ConnectionString);
-
-        context.SeedData();
-
-        logger.LogInformation("Database seeding completed.");
-    }
-    catch (Exception ex)
-    {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Lỗi khi seed dữ liệu vào database");
-        // Không throw để ứng dụng vẫn có thể boot nếu bạn muốn; tuy nhiên giữ throw giúp phát hiện lỗi sớm.
-        throw;
-    }
+    // Seed dữ liệu mẫu
+    db.SeedData();
 }
 
-// -------------------- Middleware pipeline --------------------
 app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -221,6 +201,7 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
 
 app.MapControllers();
 

@@ -22,6 +22,28 @@ public static class DatabaseSeeder
             Status = UserStatus.Active
         };
 
+        var admin2 = new User
+        {
+            LastName = "Admin",
+            FirstName = "System 2",
+            Email = "admin",
+            Phone = "0900000001",
+            Password = BCrypt.Net.BCrypt.HashPassword("123123"),
+            Role = UserRole.Admin,
+            Status = UserStatus.Active
+        };
+
+        var owner = new User
+        {
+            LastName = "Nguyễn",
+            FirstName = "I Vân",
+            Email = "owner",
+            Phone = "0901111112",
+            Password = BCrypt.Net.BCrypt.HashPassword("123123"),
+            Role = UserRole.Owner,
+            Status = UserStatus.Active
+        };
+        
         var owner1 = new User
         {
             LastName = "Nguyễn",
@@ -88,7 +110,7 @@ public static class DatabaseSeeder
             Status = UserStatus.Active
         };
 
-        context.Users.AddRange(admin, owner1, owner2, owner3, customer1, customer2, customer3);
+        context.Users.AddRange(admin, admin2, owner, owner1, owner2, owner3, customer1, customer2, customer3);
         context.SaveChanges();
 
         // 2. SEED COMPLEXES (3 cụm sân)

@@ -5,7 +5,7 @@
 namespace FootballField.API.Migrations
 {
     /// <inheritdoc />
-    public partial class MigratioTest2 : Migration
+    public partial class Migratio1 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

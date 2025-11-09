@@ -79,35 +79,36 @@
 
 ### Bảng BOOKING (Đơn đặt sân)
 
-| Trường                | Kiểu dữ liệu  | Ràng buộc / Ghi chú                                                                  |
-| --------------------- | ------------- | ------------------------------------------------------------------                   |
-| id                    | int           | PRIMARY KEY                                                                          |
-| field_id              | int           | FOREIGN KEY → FIELD(id), ON DELETE NO ACTION                                         |
-| customer_id           | int           | FOREIGN KEY → USER(id), ON DELETE NO ACTION                                          |
-| owner_id              | int           | FOREIGN KEY → USER(id), ON DELETE NO ACTION, lấy từ COMPLEX.owner_id khi tạo booking |
-| booking_date          | datetime      | Ngày diễn ra trận đấu, CHECK chỉ cho phép đặt giờ trong tương lai                    |
-| time_slot_id          | int           | FOREIGN KEY → TIME_SLOT(id), ON DELETE NO ACTION                                     |
-| deposit_amount        | int           | CHECK (deposit_amount >= 0)                                                          |
-| total_amount          | int           | CHECK (total_amount >= deposit_amount)                                               |
-| booking_status        | tinyint       | CHECK (0=Pending, 1=Confirmed, 2=Cancelled, 3=Completed, 4=NoShow)                   |
-| payment_status        | tinyint       | CHECK (0=Unpaid, 1=DepositPaid, 2=FullyPaid, 3=Refunded)                             |
-| payment_method        | nvarchar(50)  | Phương thức thanh toán (VNPay, Momo, Tiền mặt, …)                                    |
-| transaction_id        | varchar(50)   | Mã giao dịch thanh toán                                                              |
-| note                  | nvarchar(255) | Ghi chú thêm                                                                         |
-| cancelled_at          | datetime      | NULL                                                                                 |
-| cancelled_by          | int           | NULL, FK → USER(id), người hủy đơn (chủ sân hoặc khách)                              |
-| created_at            | datetime      | DEFAULT GETDATE()                                                                    |
-| updated_at            | datetime      | DEFAULT GETDATE()                                                                    |
-| **Ràng buộc bổ sung** |               | UNIQUE(field_id, booking_date, time_slot_id) để tránh đặt trùng                      |
+| Trường                | Kiểu dữ liệu  | Ràng buộc / Ghi chú                                                                                       |
+| --------------------- | ------------- | --------------------------------------------------------------------------------------------------------- |
+| id                    | int           | PRIMARY KEY                                                                                               |
+| field_id              | int           | FOREIGN KEY → FIELD(id), ON DELETE NO ACTION                                                              |
+| customer_id           | int           | FOREIGN KEY → USER(id), ON DELETE NO ACTION                                                               |
+| owner_id              | int           | FOREIGN KEY → USER(id), ON DELETE NO ACTION, lấy từ COMPLEX.owner_id khi tạo booking                      |
+| time_slot_id          | int           | FOREIGN KEY → TIME_SLOT(id), ON DELETE NO ACTION                                                          |
+| booking_date          | date          | Ngày diễn ra trận đấu, CHECK chỉ cho phép đặt giờ trong tương lai                                         |
+| hold_expires_at       | datetime      | Thời gian hết hiệu lực giữ chỗ (5 phút sau khi đặt)                                                       |
+| total_amount          | decimal(10,2) | CHECK (total_amount > 0)                                                                                  |
+| deposit_amount        | decimal(10,2) | CHECK (deposit_amount >= 0 AND deposit_amount <= total_amount)                                            |
+| payment_proof_url     | varchar(MAX)  | Link ảnh bill chuyển khoản                                                                                |
+| note                  | nvarchar(255) | Ghi chú khách hàng nhập                                                                                   |
+| booking_status        | tinyint       | (0=Pending, 1=WaitingForApproval, 2=Confirmed, 3=Rejected, 4=Cancelled, 5=Completed, 6=Expired, 7=NoShow) |
+| approved_by           | int           | FK → USER(id), người duyệt bill                                                                           |
+| approved_at           | datetime      | NULL, thời gian chủ sân duyệt                                                                             |
+| cancelled_by          | int           | NULL, FK → USER(id), người hủy đơn (chủ sân hoặc khách)                                                   |
+| cancelled_at          | datetime      | NULL                                                                                                      |
+| created_at            | datetime      | DEFAULT GETDATE()                                                                                         |
+| updated_at            | datetime      | DEFAULT GETDATE()                                                                                         |
+| **Ràng buộc bổ sung** |               | UNIQUE(field_id, booking_date, time_slot_id) để tránh đặt trùng                                           |
 
-### Bảng REVIEW (Đánh giá sân)
+### Bảng REVIEW (Đánh giá sân)              
 
 | Trường      | Kiểu dữ liệu  | Ràng buộc / Ghi chú                              |
 | ----------- | ------------- | ------------------------------------------------ |
 | id          | int           | PRIMARY KEY                                      |
 | booking_id  | int           | FOREIGN KEY → BOOKING(id), ON DELETE CASCADE     |
 | customer_id | int           | FOREIGN KEY → USER(id), ON DELETE NO ACTION      |
-| field_id    | int           | FOREIGN KEY → FIELD(id), ON DELETE NO ACTION     |
+| complex_id  | int           | FOREIGN KEY → COMPLEX(id), ON DELETE NO ACTION   |
 | rating      | tinyint       | CHECK (rating BETWEEN 1 AND 5)                   |
 | comment     | nvarchar(255) | Chỉ cho phép đánh giá sau khi hoàn thành booking |
 | is_visible  | bit           | DEFAULT 1, CHECK (0=False, 1=True)               |

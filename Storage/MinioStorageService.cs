@@ -46,7 +46,9 @@ public class MinioStorageService : IStorageService
             .WithObjectSize(stream.Length)
             .WithContentType(string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType), ct);
 
-        return await GetPublicUrl(objectName);
+        // Trả về relative path thay vì full URL
+        var encoded = HttpUtility.UrlPathEncode(objectName);
+        return $"/{_settings.BucketName}/{encoded}";
     }
 
     public Task<string> GetPublicUrl(string objectName)
@@ -56,6 +58,19 @@ public class MinioStorageService : IStorageService
         var encoded = HttpUtility.UrlPathEncode(objectName);
         var url = $"{scheme}://{_settings.Endpoint}/{_settings.BucketName}/{encoded}";
         return Task.FromResult(url);
+    }
+
+    public string GetFullUrl(string relativePath)
+    {
+        if (string.IsNullOrEmpty(relativePath))
+            return string.Empty;
+
+        // Nếu đã là full URL thì trả về luôn (để tương thích với dữ liệu cũ)
+        if (relativePath.StartsWith("http://") || relativePath.StartsWith("https://"))
+            return relativePath;
+
+        // Ghép base URL + relative path
+        return $"{_settings.BaseUrl.TrimEnd('/')}{relativePath}";
     }
 
     public async Task<string> GetPresignedUrlAsync(string objectName, TimeSpan expiry, CancellationToken ct = default)

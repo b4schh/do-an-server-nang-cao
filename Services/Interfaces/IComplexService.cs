@@ -10,7 +10,21 @@ namespace FootballField.API.Services.Interfaces
         Task<ComplexWithFieldsDto?> GetComplexWithFieldsAsync(int id);
         Task<IEnumerable<ComplexDto>> GetComplexesByOwnerIdAsync(int ownerId);
         Task<ComplexDto> CreateComplexAsync(CreateComplexDto createComplexDto);
+        Task<ComplexDto> CreateComplexByOwnerAsync(CreateComplexByOwnerDto createComplexDto, int ownerId);
+        Task<ComplexDto> CreateComplexByAdminAsync(CreateComplexByAdminDto createComplexDto);
         Task UpdateComplexAsync(int id, UpdateComplexDto updateComplexDto);
         Task SoftDeleteComplexAsync(int id);
+        Task ApproveComplexAsync(int id);
+        Task RejectComplexAsync(int id);
+        Task<ComplexFullDetailsDto?> GetComplexWithFullDetailsAsync(int id, DateTime date);
+        Task<IEnumerable<ComplexDto>> SearchComplexesAsync(
+            string? name,
+            string? street,
+            string? ward, 
+            string? province,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            double? minRating = null,
+            double? maxRating = null);
     }
 }

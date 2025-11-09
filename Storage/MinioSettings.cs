@@ -8,5 +8,6 @@ namespace FootballField.API.Storage
         public string SecretKey { get; set; } = default!;
         public string BucketName { get; set; } = default!;
         public bool WithSSL { get; set; }
+        public string BaseUrl { get; set; } = default!;
     }
 }

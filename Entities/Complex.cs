@@ -31,4 +31,6 @@ public class Complex
     public User Owner { get; set; } = null!;
     public ICollection<Field> Fields { get; set; } = new List<Field>();
     public ICollection<ComplexImage> ComplexImages { get; set; } = new List<ComplexImage>();
+    public ICollection<Review> Reviews { get; set; } = new List<Review>();
+
 }

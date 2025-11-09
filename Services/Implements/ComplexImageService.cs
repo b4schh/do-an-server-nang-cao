@@ -1,18 +1,17 @@
 using FootballField.API.Dtos;
 using FootballField.API.Entities;
 using FootballField.API.Services.Interfaces;
-using FootballField.API.DbContexts;
-using Microsoft.EntityFrameworkCore;
+using FootballField.API.Repositories.Interfaces;
 
 namespace FootballField.API.Services.Implements;
 
 public class ComplexImageService : IComplexImageService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IComplexImageRepository _complexImageRepository;
 
-    public ComplexImageService(ApplicationDbContext context)
+    public ComplexImageService(IComplexImageRepository complexImageRepository)
     {
-        _context = context;
+        _complexImageRepository = complexImageRepository;
     }
 
     public async Task<ComplexImageResponseDto> CreateAsync(ComplexImageCreateDto dto)
@@ -24,22 +23,20 @@ public class ComplexImageService : IComplexImageService
             IsMain = dto.IsMain
         };
 
-        _context.ComplexImages.Add(complexImage);
-        await _context.SaveChangesAsync();
+        var createdImage = await _complexImageRepository.AddAsync(complexImage);
 
         return new ComplexImageResponseDto
         {
-            Id = complexImage.Id,
-            ComplexId = complexImage.ComplexId,
-            ImageUrl = complexImage.ImageUrl,
-            IsMain = complexImage.IsMain
+            Id = createdImage.Id,
+            ComplexId = createdImage.ComplexId,
+            ImageUrl = createdImage.ImageUrl,
+            IsMain = createdImage.IsMain
         };
     }
 
-    public async Task<ComplexImageResponseDto> GetByIdAsync(long id)
+    public async Task<ComplexImageResponseDto> GetByIdAsync(int id)
     {
-        var complexImage = await _context.ComplexImages
-            .FirstOrDefaultAsync(ci => ci.Id == id);
+        var complexImage = await _complexImageRepository.GetByIdAsync(id);
 
         if (complexImage == null)
         {
@@ -57,9 +54,7 @@ public class ComplexImageService : IComplexImageService
 
     public async Task<List<ComplexImageResponseDto>> GetByComplexIdAsync(int complexId)
     {
-        var complexImages = await _context.ComplexImages
-            .Where(ci => ci.ComplexId == complexId)
-            .ToListAsync();
+        var complexImages = await _complexImageRepository.GetByComplexIdAsync(complexId);
 
         return complexImages.Select(ci => new ComplexImageResponseDto
         {
@@ -70,17 +65,15 @@ public class ComplexImageService : IComplexImageService
         }).ToList();
     }
 
-    public async Task DeleteAsync(long id)
+    public async Task DeleteAsync(int id)
     {
-        var complexImage = await _context.ComplexImages
-            .FirstOrDefaultAsync(ci => ci.Id == id);
+        var complexImage = await _complexImageRepository.GetByIdAsync(id);
 
         if (complexImage == null)
         {
             throw new Exception("Không tìm thấy ảnh!");
         }
 
-        _context.ComplexImages.Remove(complexImage);
-        await _context.SaveChangesAsync();
+        await _complexImageRepository.DeleteAsync(complexImage);
     }
 }

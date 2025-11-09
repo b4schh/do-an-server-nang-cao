@@ -17,6 +17,5 @@ public class Field
     public Complex Complex { get; set; } = null!;
     public ICollection<TimeSlot> TimeSlots { get; set; } = new List<TimeSlot>();
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
-    public ICollection<Review> Reviews { get; set; } = new List<Review>();
     public ICollection<FavoriteComplex> FavoritedBy { get; set; } = new List<FavoriteComplex>();
 }
