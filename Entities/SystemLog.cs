@@ -6,5 +6,5 @@ public class SystemLog
     public string? LogLevel { get; set; }
     public string? Source { get; set; }
     public string? Message { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; }
 }

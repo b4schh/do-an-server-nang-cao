@@ -3,6 +3,67 @@
 ## Tổng quan
 Đã implement đầy đủ tính năng Booking theo đúng nghiệp vụ yêu cầu trong prompt.md
 
+## ⚠️ Giải pháp Filtered Unique Index
+
+### Vấn đề
+Ban đầu database có UNIQUE constraint trên `(field_id, booking_date, time_slot_id)` cho **tất cả** các booking. Điều này gây ra vấn đề:
+- Khi booking bị Rejected/Cancelled/Expired, dòng dữ liệu vẫn còn trong DB
+- UNIQUE constraint chặn không cho người khác đặt cùng slot đó
+- Slot không được "trả lại" cho hệ thống
+
+### Giải pháp: Filtered Unique Index
+Sử dụng **Filtered Unique Index** - chỉ áp dụng unique constraint cho những trạng thái **thực sự chiếm slot**:
+
+```sql
+CREATE UNIQUE INDEX IX_Booking_UniqueActiveSlot 
+ON BOOKING (field_id, booking_date, time_slot_id)
+WHERE booking_status IN (0, 1, 2); -- Pending, WaitingForApproval, Confirmed
+```
+
+### Phân loại trạng thái
+
+#### Trạng thái CHIẾM SLOT (áp dụng unique):
+- **Pending (0)**: Khách vừa tạo, đang giữ chỗ trong 5 phút
+- **WaitingForApproval (1)**: Đã upload bill, chờ chủ sân duyệt
+- **Confirmed (2)**: Chủ sân đã duyệt, sân đã được đặt chắc chắn
+
+#### Trạng thái KHÔNG CHIẾM SLOT (không áp dụng unique):
+- **Rejected (3)**: Chủ sân từ chối bill → slot được trả lại
+- **Cancelled (4)**: Booking bị hủy → slot được trả lại
+- **Completed (5)**: Đã hoàn thành → slot được trả lại
+- **Expired (6)**: Hết thời gian giữ chỗ → slot được trả lại
+- **NoShow (7)**: Khách không đến → slot được trả lại
+
+### Lợi ích
+1. ✅ **Slot được tự động release**: Khi booking chuyển sang trạng thái không chiếm slot, người khác có thể đặt ngay
+2. ✅ **Giữ lịch sử**: Vẫn lưu trữ toàn bộ lịch sử booking trong DB
+3. ✅ **Performance tốt**: Index được tối ưu, chỉ check trên subset nhỏ của data
+4. ✅ **Tránh race condition**: Database đảm bảo không có 2 booking active cùng lúc cho 1 slot
+
+### Ví dụ thực tế
+
+**Scenario 1: Booking bị reject**
+```
+1. User A tạo booking → Status = Pending (chiếm slot)
+2. User A upload bill → Status = WaitingForApproval (vẫn chiếm slot)
+3. Owner reject → Status = Rejected (KHÔNG chiếm slot nữa)
+4. User B có thể tạo booking mới cho cùng slot ✅
+```
+
+**Scenario 2: Booking bị expired**
+```
+1. User A tạo booking → Status = Pending (chiếm slot)
+2. Sau 5 phút không upload → Status = Expired (KHÔNG chiếm slot nữa)
+3. User B có thể tạo booking mới cho cùng slot ✅
+```
+
+**Scenario 3: Booking bị cancel**
+```
+1. User A tạo booking → Status = Confirmed (chiếm slot)
+2. User A cancel → Status = Cancelled (KHÔNG chiếm slot nữa)
+3. User B có thể tạo booking mới cho cùng slot ✅
+```
+
 ## Các file đã tạo/cập nhật
 
 ### 1. Entities

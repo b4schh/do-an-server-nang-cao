@@ -3,6 +3,7 @@ using FootballField.API.Entities;
 using FootballField.API.Dtos.Field;
 using FootballField.API.Repositories.Interfaces;
 using FootballField.API.Services.Interfaces;
+using FootballField.API.Utils;
 
 namespace FootballField.API.Services.Implements
 {
@@ -51,8 +52,7 @@ namespace FootballField.API.Services.Implements
         public async Task<FieldDto> CreateFieldAsync(CreateFieldDto createFieldDto)
         {
             var field = _mapper.Map<Field>(createFieldDto);
-            field.CreatedAt = DateTime.Now;
-            field.UpdatedAt = DateTime.Now;
+            // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
             
             var created = await _fieldRepository.AddAsync(field);
             return _mapper.Map<FieldDto>(created);
@@ -65,7 +65,7 @@ namespace FootballField.API.Services.Implements
                 throw new Exception("Field not found");
 
             _mapper.Map(updateFieldDto, existingField);
-            existingField.UpdatedAt = DateTime.Now;
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
             
             await _fieldRepository.UpdateAsync(existingField);
         }

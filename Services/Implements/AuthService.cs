@@ -44,9 +44,8 @@ namespace FootballField.API.Services.Implements
                 Phone = request.Phone,
                 Password = HashPassword(request.Password),
                 Role = UserRole.Customer,
-                Status = UserStatus.Active,              
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now               
+                Status = UserStatus.Active
+                // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
             };
 
             // Lưu user vào database
@@ -55,12 +54,13 @@ namespace FootballField.API.Services.Implements
             // Generate JWT token
             var token = _jwtHelper.GenerateToken(user);
             var expiryMinutes = int.Parse(_configuration["JwtSettings:ExpiryMinutes"] ?? "60");
+            var vietnamNow = TimeZoneHelper.VietnamNow;
 
             return new LoginResponse
             {
                 Token = token,
                 User = _mapper.Map<UserDto>(user),
-                ExpiresAt = DateTime.Now.AddMinutes(expiryMinutes)
+                ExpiresAt = vietnamNow.AddMinutes(expiryMinutes)
             };
         }
 
@@ -82,12 +82,13 @@ namespace FootballField.API.Services.Implements
             // Generate JWT token
             var token = _jwtHelper.GenerateToken(user);
             var expiryMinutes = int.Parse(_configuration["JwtSettings:ExpiryMinutes"] ?? "60");
+            var vietnamNow = TimeZoneHelper.VietnamNow;
 
             return new LoginResponse
             {
                 Token = token,
                 User = _mapper.Map<UserDto>(user),
-                ExpiresAt = DateTime.Now.AddMinutes(expiryMinutes)
+                ExpiresAt = vietnamNow.AddMinutes(expiryMinutes)
             };
         }
 

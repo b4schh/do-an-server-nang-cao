@@ -31,8 +31,8 @@ public class Booking
     public DateTime? ApprovedAt { get; set; }
     public int? CancelledBy { get; set; }
     public DateTime? CancelledAt { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     // Navigation properties
     public Field Field { get; set; } = null!;

@@ -4,6 +4,7 @@ using FootballField.API.Entities;
 using FootballField.API.Repositories.Interfaces;
 using FootballField.API.Services.Interfaces;
 using FootballField.API.Storage;
+using FootballField.API.Utils;
 
 namespace FootballField.API.Services.Implements
 {
@@ -36,8 +37,10 @@ namespace FootballField.API.Services.Implements
 
         public async Task<BookingDto> CreateBookingAsync(int customerId, CreateBookingDto dto)
         {
+            var vietnamNow = TimeZoneHelper.VietnamNow;
+            
             // Validate booking date is in the future
-            if (dto.BookingDate.Date < DateTime.Now.Date)
+            if (dto.BookingDate.Date < vietnamNow.Date)
             {
                 throw new InvalidOperationException("Không thể đặt sân cho ngày trong quá khứ");
             }
@@ -59,6 +62,16 @@ namespace FootballField.API.Services.Implements
             if (timeSlot.FieldId != dto.FieldId)
             {
                 throw new InvalidOperationException("Khung giờ không thuộc sân này");
+            }
+
+            // Validate booking time - không cho đặt khung giờ đã qua trong ngày hiện tại
+            if (dto.BookingDate.Date == vietnamNow.Date)
+            {
+                // Nếu đặt sân trong ngày hiện tại, check xem khung giờ đã qua chưa
+                if (timeSlot.StartTime <= vietnamNow.TimeOfDay)
+                {
+                    throw new InvalidOperationException("Không thể đặt khung giờ đã qua trong ngày hiện tại");
+                }
             }
 
             // Check if timeslot is already booked
@@ -83,17 +96,18 @@ namespace FootballField.API.Services.Implements
                 OwnerId = ownerId,
                 TimeSlotId = dto.TimeSlotId,
                 BookingDate = dto.BookingDate.Date,
-                HoldExpiresAt = DateTime.Now.AddMinutes(HOLD_MINUTES),
+                HoldExpiresAt = vietnamNow.AddMinutes(HOLD_MINUTES),
                 TotalAmount = totalAmount,
                 DepositAmount = depositAmount,
                 Note = dto.Note,
-                BookingStatus = BookingStatus.Pending,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                BookingStatus = BookingStatus.Pending
             };
 
             var created = await _bookingRepository.AddAsync(booking);
-            return await MapToBookingDto(created);
+            
+            // Reload booking với đầy đủ navigation properties
+            var bookingWithDetails = await _bookingRepository.GetDetailAsync(created.Id);
+            return MapToBookingDtoSync(bookingWithDetails!);
         }
 
         public async Task<BookingDto> UploadPaymentProofAsync(int bookingId, int customerId, UploadPaymentProofDto dto)
@@ -117,10 +131,10 @@ namespace FootballField.API.Services.Implements
             }
 
             // Check hold expiry
-            if (booking.HoldExpiresAt < DateTime.Now)
+            var vietnamNow = TimeZoneHelper.VietnamNow;
+            if (booking.HoldExpiresAt < vietnamNow)
             {
                 booking.BookingStatus = BookingStatus.Expired;
-                booking.UpdatedAt = DateTime.Now;
                 await _bookingRepository.UpdateAsync(booking);
                 throw new InvalidOperationException("Booking đã hết hạn giữ chỗ");
             }
@@ -138,7 +152,6 @@ namespace FootballField.API.Services.Implements
                 booking.Note = dto.PaymentNote;
             }
             booking.BookingStatus = BookingStatus.WaitingForApproval;
-            booking.UpdatedAt = DateTime.Now;
 
             await _bookingRepository.UpdateAsync(booking);
             return await MapToBookingDto(booking);
@@ -167,8 +180,7 @@ namespace FootballField.API.Services.Implements
             // Update booking
             booking.BookingStatus = BookingStatus.Confirmed;
             booking.ApprovedBy = ownerId;
-            booking.ApprovedAt = DateTime.Now;
-            booking.UpdatedAt = DateTime.Now;
+            booking.ApprovedAt = TimeZoneHelper.VietnamNow;
 
             await _bookingRepository.UpdateAsync(booking);
             return await MapToBookingDto(booking);
@@ -200,7 +212,6 @@ namespace FootballField.API.Services.Implements
             {
                 booking.Note = $"Từ chối: {reason}";
             }
-            booking.UpdatedAt = DateTime.Now;
 
             await _bookingRepository.UpdateAsync(booking);
             return await MapToBookingDto(booking);
@@ -231,8 +242,7 @@ namespace FootballField.API.Services.Implements
             // Update booking
             booking.BookingStatus = BookingStatus.Cancelled;
             booking.CancelledBy = userId;
-            booking.CancelledAt = DateTime.Now;
-            booking.UpdatedAt = DateTime.Now;
+            booking.CancelledAt = TimeZoneHelper.VietnamNow;
 
             await _bookingRepository.UpdateAsync(booking);
             return await MapToBookingDto(booking);
@@ -259,14 +269,14 @@ namespace FootballField.API.Services.Implements
             }
 
             // Check booking date has passed
-            if (booking.BookingDate.Date > DateTime.Now.Date)
+            var vietnamNow = TimeZoneHelper.VietnamNow;
+            if (booking.BookingDate.Date > vietnamNow.Date)
             {
                 throw new InvalidOperationException("Chỉ có thể đánh dấu hoàn thành sau ngày đá");
             }
 
             // Update booking
             booking.BookingStatus = BookingStatus.Completed;
-            booking.UpdatedAt = DateTime.Now;
 
             await _bookingRepository.UpdateAsync(booking);
             return await MapToBookingDto(booking);
@@ -293,14 +303,14 @@ namespace FootballField.API.Services.Implements
             }
 
             // Check booking date has passed
-            if (booking.BookingDate.Date > DateTime.Now.Date)
+            var vietnamNow = TimeZoneHelper.VietnamNow;
+            if (booking.BookingDate.Date > vietnamNow.Date)
             {
                 throw new InvalidOperationException("Chỉ có thể đánh dấu NoShow sau ngày đá");
             }
 
             // Update booking
             booking.BookingStatus = BookingStatus.NoShow;
-            booking.UpdatedAt = DateTime.Now;
 
             await _bookingRepository.UpdateAsync(booking);
             return await MapToBookingDto(booking);
@@ -331,7 +341,6 @@ namespace FootballField.API.Services.Implements
             foreach (var booking in expiredBookings)
             {
                 booking.BookingStatus = BookingStatus.Expired;
-                booking.UpdatedAt = DateTime.Now;
             }
 
             if (expiredBookings.Any())

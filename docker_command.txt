@@ -1,0 +1,32 @@
+# Dừng containers (giữ lại data)
+docker compose -f docker-compose.dev.yml down
+
+# Hoặc dừng và xóa volumes (xóa cả database)
+docker compose -f docker-compose.dev.yml down -v
+
+# Khởi động và xem logs (không rebuild)
+docker compose -f docker-compose.dev.yml up
+
+# Khởi động với rebuild nếu có thay đổi code
+docker compose -f docker-compose.dev.yml up --build
+
+# Xem logs của service cụ thể
+docker compose -f docker-compose.dev.yml logs -f api
+
+# Xem logs tất cả services
+docker compose -f docker-compose.dev.yml logs -f
+
+# Khởi động ngầm (background) - KHÔNG hiển thị logs
+docker compose -f docker-compose.dev.yml up -d
+
+# Xem logs sau khi chạy ngầm
+docker compose -f docker-compose.dev.yml logs -f
+
+# Restart service cụ thể
+docker compose -f docker-compose.dev.yml restart api
+
+# Development
+docker compose -f docker-compose.dev.yml --env-file .env.dev up
+
+# Production
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d

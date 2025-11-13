@@ -8,8 +8,6 @@ public static class DatabaseSeeder
     {
         if (context.Users.Any()) return; // Không seed nếu đã có dữ liệu
 
-        var now = DateTime.Now;
-
         // 1. SEED USERS (1 Admin + 3 Owners + 3 Customers)
         var admin = new User
         {
