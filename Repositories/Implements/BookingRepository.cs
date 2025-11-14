@@ -1,6 +1,7 @@
 using FootballField.API.DbContexts;
 using FootballField.API.Entities;
 using FootballField.API.Repositories.Interfaces;
+using FootballField.API.Utils;
 using Microsoft.EntityFrameworkCore;
 
 namespace FootballField.API.Repositories.Implements
@@ -89,7 +90,7 @@ namespace FootballField.API.Repositories.Implements
 
         public async Task<IEnumerable<Booking>> GetExpiredPendingBookingsAsync()
         {
-            var now = DateTime.Now;
+            var now = TimeZoneHelper.VietnamNow;
             return await _dbSet
                 .Where(b => b.BookingStatus == BookingStatus.Pending 
                             && b.HoldExpiresAt < now)

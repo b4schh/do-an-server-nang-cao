@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using FootballField.API.DbContexts;
 using FootballField.API.Repositories.Interfaces;
+using FootballField.API.Utils;
 using Microsoft.EntityFrameworkCore;
 
 namespace FootballField.API.Repositories.Implements
@@ -108,7 +109,7 @@ namespace FootballField.API.Repositories.Implements
                 isDeletedProperty.SetValue(entity, true);
 
             if (deletedAtProperty != null)
-                deletedAtProperty.SetValue(entity, DateTime.Now);
+                deletedAtProperty.SetValue(entity, TimeZoneHelper.VietnamNow);
 
             await UpdateAsync(entity);
         }

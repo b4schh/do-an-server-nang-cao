@@ -8,8 +8,6 @@ public static class DatabaseSeeder
     {
         if (context.Users.Any()) return; // Không seed nếu đã có dữ liệu
 
-        var now = DateTime.Now;
-
         // 1. SEED USERS (1 Admin + 3 Owners + 3 Customers)
         var admin = new User
         {
@@ -217,7 +215,7 @@ public static class DatabaseSeeder
                 : (field.FieldSize == "Sân 7" ? 500000m : 800000m);
 
             var startOfDay = new TimeSpan(6, 0, 0);
-            var endOfDay = new TimeSpan(22, 0, 0);
+            var endOfDay = new TimeSpan(23, 59, 0);
             var slotDuration = new TimeSpan(1, 30, 0); // 1h30
 
             for (var start = startOfDay; start < endOfDay; start += slotDuration)

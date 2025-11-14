@@ -39,7 +39,7 @@ namespace FootballField.API.Utils
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(expiryMinutes),
+                expires: TimeZoneHelper.VietnamNow.AddMinutes(expiryMinutes),
                 signingCredentials: credentials
             );
 

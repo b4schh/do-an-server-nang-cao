@@ -16,8 +16,25 @@ using Minio;
 using FootballField.API.Storage;
 using Microsoft.AspNetCore.Http.Features;
 using FootballField.API.BackgroundJobs;
+using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ========== CẤU HÌNH TIMEZONE ==========
+// Set timezone cho toàn bộ ứng dụng
+string timeZoneId =
+    OperatingSystem.IsWindows()
+        ? "SE Asia Standard Time"
+        : "Asia/Ho_Chi_Minh";
+
+var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+Environment.SetEnvironmentVariable("TZ", timeZoneId);
+
+// Đặt culture mặc định cho ứng dụng
+CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("vi-VN");
+CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("vi-VN");
+
+// Đọc Connection String từ appsettings.json
 
 // Đọc Connection String từ appsettings.json
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -34,6 +51,7 @@ builder.Services.AddScoped<IComplexImageRepository, ComplexImageRepository>();
 builder.Services.AddScoped<IFieldRepository, FieldRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
+builder.Services.AddSingleton<ISseRepository, SseRepository>();
 
 // ========== ĐĂNG KÝ SERVICES ==========
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -43,12 +61,15 @@ builder.Services.AddScoped<IComplexImageService, ComplexImageService>();
 builder.Services.AddScoped<IFieldService, FieldService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITimeSlotService, TimeSlotService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // ========== ĐĂNG KÝ BACKGROUND SERVICES ==========
 builder.Services.AddHostedService<BookingExpirationBackgroundService>();
 
 // ========== ĐĂNG KÝ UTILITIES ==========
 builder.Services.AddScoped<JwtHelper>();
+
+builder.Services.AddSingleton(vietnamTimeZone);
 
 // ========== CẤU HÌNH JWT AUTHENTICATION ==========
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -74,6 +95,7 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
         ClockSkew = TimeSpan.Zero
     };
+    
 });
 
 builder.Services.AddAuthorization();
@@ -179,7 +201,18 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate(); // tự động tạo DB nếu chưa có
+    
+    try
+    {
+        if (!db.Database.CanConnect())
+        {
+            db.Database.Migrate();
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Warning] Database migration skipped: {ex.Message}");
+    }
 
     // Seed dữ liệu mẫu
     db.SeedData();

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FootballField.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251108111837_InitialCreate")]
+    [Migration("20251112030122_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -62,7 +62,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<int>("CustomerId")
                         .HasColumnType("int")
@@ -107,7 +107,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -127,7 +127,9 @@ namespace FootballField.API.Migrations
                         .HasDatabaseName("IX_Booking_BookingDate_Status");
 
                     b.HasIndex("FieldId", "BookingDate", "TimeSlotId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_Booking_UniqueActiveSlot")
+                        .HasFilter("[booking_status] IN (0, 1, 2)");
 
                     b.ToTable("BOOKING", null, t =>
                         {
@@ -156,7 +158,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2")
@@ -220,7 +222,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<string>("Ward")
                         .HasMaxLength(100)
@@ -285,7 +287,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int")
@@ -318,7 +320,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2")
@@ -359,7 +361,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -382,7 +384,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<bool>("IsRead")
                         .ValueGeneratedOnAdd()
@@ -456,7 +458,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<decimal?>("DepositRate")
                         .HasColumnType("decimal(5,2)")
@@ -474,7 +476,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -516,7 +518,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<int>("CustomerId")
                         .HasColumnType("int")
@@ -546,7 +548,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -604,7 +606,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -630,7 +632,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<string>("LogLevel")
                         .HasMaxLength(20)
@@ -667,7 +669,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<TimeSpan>("EndTime")
                         .HasColumnType("time")
@@ -695,7 +697,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -729,7 +731,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2")
@@ -786,7 +788,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -818,7 +820,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)

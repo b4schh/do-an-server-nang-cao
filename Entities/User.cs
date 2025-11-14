@@ -28,8 +28,8 @@ public class User
     public UserStatus Status { get; set; } = UserStatus.Active;
     public bool IsDeleted { get; set; } = false;
     public int? DeletedBy { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
 
     // Navigation properties
