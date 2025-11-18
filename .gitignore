@@ -450,3 +450,4 @@ tmp/
 *.backup
 
 prompt/
+ci/registry/registry-data/*
