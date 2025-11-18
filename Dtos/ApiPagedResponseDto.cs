@@ -23,9 +23,8 @@ namespace FootballField.API.Dtos
             PageIndex = pageIndex;
             PageSize = pageSize;
             TotalRecords = totalRecords;
-
-            // Thêm metadata tự động (vd: trả về total info cho client)
-            Meta = new { TotalRecords, TotalPages, PageIndex, PageSize };
+            // ✅ Xóa dòng này
+            // Meta = new { TotalRecords, TotalPages, PageIndex, PageSize };
         }
     }
 }

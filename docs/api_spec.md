@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 # API SPECIFICATION - FOOTBALL FIELD BOOKING SYSTEM
 
 ## A. TỔNG QUAN
@@ -10,15 +8,16 @@
 - **Protocol**: HTTP/HTTPS
 - **Framework**: ASP.NET Core 8.0
 - **Authentication**: JWT Bearer Token
+- **Timezone**: Asia/Ho_Chi_Minh (SE Asia Standard Time)
 
 ### 2. Mô tả hệ thống
 Hệ thống API quản lý đặt sân bóng đá, hỗ trợ các chức năng:
 - Quản lý người dùng (Admin, Owner, Customer)
 - Quản lý cụm sân và sân con
-- Đặt lịch và quản lý booking
-- Đánh giá và review sân
-- Thông báo và push notification
+- Đặt lịch và quản lý booking với luồng thanh toán cọc
+- Quản lý ảnh cụm sân (MinIO Storage)
 - Quản lý khung giờ (time slots)
+- Background job tự động hủy booking hết hạn
 
 ---
 
@@ -32,9 +31,7 @@ Hệ thống API quản lý đặt sân bóng đá, hỗ trợ các chức năng
   "success": true,
   "message": "Thông điệp thành công",
   "statusCode": 200,
-  "data": { ... },
-  "meta": { ... },
-  "errors": null
+  "data": { ... }
 }
 ```
 
@@ -44,9 +41,7 @@ Hệ thống API quản lý đặt sân bóng đá, hỗ trợ các chức năng
   "success": false,
   "message": "Thông điệp lỗi",
   "statusCode": 400,
-  "data": null,
-  "meta": null,
-  "errors": ["Chi tiết lỗi 1", "Chi tiết lỗi 2"]
+  "data": null
 }
 ```
 
@@ -57,15 +52,10 @@ Hệ thống API quản lý đặt sân bóng đá, hỗ trợ các chức năng
   "message": "Lấy danh sách thành công",
   "statusCode": 200,
   "data": [...],
-  "meta": {
-    "totalRecords": 100,
-    "totalPages": 10,
-    "pageIndex": 1,
-    "pageSize": 10,
-    "hasPreviousPage": false,
-    "hasNextPage": true
-  },
-  "errors": null
+  "pageIndex": 1,
+  "pageSize": 10,
+  "totalRecords": 100,
+  "totalPages": 10
 }
 ```
 
@@ -99,35 +89,28 @@ Authorization: Bearer {JWT_TOKEN}
 
 #### UserRole Enum
 ```
-Admin = 0
+Customer = 0
 Owner = 1
-Customer = 2
+Admin = 2
 ```
 
 #### UserStatus Enum
 ```
-Active = 0
-Inactive = 1
-Suspended = 2
-Banned = 3
-PendingVerification = 4
+Inactive = 0
+Active = 1
+Banned = 2
 ```
 
 #### BookingStatus Enum
 ```
-Pending = 0
-Confirmed = 1
-Cancelled = 2
-Completed = 3
-NoShow = 4
-```
-
-#### PaymentStatus Enum
-```
-Unpaid = 0
-DepositPaid = 1
-FullyPaid = 2
-Refunded = 3
+Pending = 0                // Khách vừa tạo booking, chưa upload bill
+WaitingForApproval = 1     // Khách đã upload bill, chờ chủ sân duyệt
+Confirmed = 2              // Chủ sân đã duyệt cọc, giữ sân thành công
+Rejected = 3               // Chủ sân từ chối bill
+Cancelled = 4              // Khách hoặc chủ sân hủy booking
+Completed = 5              // Trận đấu đã diễn ra, thanh toán đầy đủ
+Expired = 6                // Hết thời gian giữ chỗ, khách không upload bill
+NoShow = 7                 // Khách không đến sân
 ```
 
 #### ComplexStatus Enum
@@ -135,16 +118,6 @@ Refunded = 3
 Pending = 0
 Approved = 1
 Rejected = 2
-Suspended = 3
-```
-
-#### NotificationType Enum
-```
-Booking = 0
-Payment = 1
-Promotion = 2
-System = 3
-Review = 4
 ```
 
 ---

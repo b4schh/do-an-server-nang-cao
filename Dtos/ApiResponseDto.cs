@@ -6,7 +6,6 @@ namespace FootballField.API.Dtos
         public string Message { get; set; } = string.Empty;
         public int StatusCode { get; set; } = 200;
         public T? Data { get; set; }
-        public object? Meta { get; set; }  // dữ liệu phụ, vd: { total: 50 }
         public IEnumerable<string>? Errors { get; set; } // lỗi chi tiết (nếu có)
 
         public ApiResponse() { }
