@@ -14,9 +14,20 @@ pipeline {
             }
         }
 
-        stage('Tag & Push to Registry') {
+        stage('Tag Image') {
             steps {
                 sh 'docker tag football-api localhost:5000/football-api:latest'
+            }
+        }
+
+        stage('Login to Registry') {
+            steps {
+                sh 'echo "admin123" | docker login localhost:5000 -u admin --password-stdin'
+            }
+        }
+
+        stage('Push Image to Registry') {
+            steps {
                 sh 'docker push localhost:5000/football-api:latest'
             }
         }
