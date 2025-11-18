@@ -8,5 +8,5 @@ public class UserActivityLog
     public string? TargetTable { get; set; }
     public int? TargetId { get; set; }
     public string? Description { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; }
 }

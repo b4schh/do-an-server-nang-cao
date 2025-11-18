@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using FootballField.API.DbContexts;
 using FootballField.API.Repositories.Interfaces;
+using FootballField.API.Utils;
 using Microsoft.EntityFrameworkCore;
 
 namespace FootballField.API.Repositories.Implements
@@ -28,8 +29,8 @@ namespace FootballField.API.Repositories.Implements
         }
 
         public virtual async Task<(IEnumerable<T> items, int totalCount)> GetPagedAsync(
-            int pageIndex, 
-            int pageSize, 
+            int pageIndex,
+            int pageSize,
             Expression<Func<T, bool>>? filter = null)
         {
             IQueryable<T> query = _dbSet;
@@ -47,11 +48,6 @@ namespace FootballField.API.Repositories.Implements
         }
 
         public virtual async Task<T?> GetByIdAsync(int id)
-        {
-            return await _dbSet.FindAsync(id);
-        }
-
-        public virtual async Task<T?> GetByIdAsync(long id)
         {
             return await _dbSet.FindAsync(id);
         }
@@ -113,24 +109,7 @@ namespace FootballField.API.Repositories.Implements
                 isDeletedProperty.SetValue(entity, true);
 
             if (deletedAtProperty != null)
-                deletedAtProperty.SetValue(entity, DateTime.Now);
-
-            await UpdateAsync(entity);
-        }
-
-        public virtual async Task SoftDeleteAsync(long id)
-        {
-            var entity = await GetByIdAsync(id);
-            if (entity == null) return;
-
-            var isDeletedProperty = entity.GetType().GetProperty("IsDeleted");
-            var deletedAtProperty = entity.GetType().GetProperty("DeletedAt");
-
-            if (isDeletedProperty != null)
-                isDeletedProperty.SetValue(entity, true);
-
-            if (deletedAtProperty != null)
-                deletedAtProperty.SetValue(entity, DateTime.Now);
+                deletedAtProperty.SetValue(entity, TimeZoneHelper.VietnamNow);
 
             await UpdateAsync(entity);
         }

@@ -21,7 +21,7 @@ namespace FootballField.API.Migrations
                     config_value = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     data_type = table.Column<string>(type: "varchar(20)", unicode: false, maxLength: 20, nullable: false, defaultValue: "string"),
                     description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()")
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
                 },
                 constraints: table =>
                 {
@@ -38,7 +38,7 @@ namespace FootballField.API.Migrations
                     log_level = table.Column<string>(type: "varchar(20)", unicode: false, maxLength: 20, nullable: true),
                     source = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     message = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()")
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
                 },
                 constraints: table =>
                 {
@@ -61,8 +61,8 @@ namespace FootballField.API.Migrations
                     status = table.Column<byte>(type: "tinyint", nullable: false),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     deleted_by = table.Column<int>(type: "int", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
                     deleted_at = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
@@ -93,8 +93,8 @@ namespace FootballField.API.Migrations
                     status = table.Column<byte>(type: "tinyint", nullable: false),
                     is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
                     deleted_at = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
@@ -121,7 +121,7 @@ namespace FootballField.API.Migrations
                     related_table = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     related_id = table.Column<int>(type: "int", nullable: true),
                     is_read = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
                     read_at = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
@@ -150,8 +150,8 @@ namespace FootballField.API.Migrations
                     deposit_rate = table.Column<decimal>(type: "decimal(5,2)", nullable: true),
                     min_booking_notice = table.Column<int>(type: "int", nullable: true),
                     allow_review = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()")
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
                 },
                 constraints: table =>
                 {
@@ -177,7 +177,7 @@ namespace FootballField.API.Migrations
                     target_table = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     target_id = table.Column<int>(type: "int", nullable: true),
                     description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()")
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
                 },
                 constraints: table =>
                 {
@@ -222,8 +222,8 @@ namespace FootballField.API.Migrations
                     field_size = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
                     deleted_at = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
@@ -244,7 +244,7 @@ namespace FootballField.API.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     user_id = table.Column<int>(type: "int", nullable: false),
                     complex_id = table.Column<int>(type: "int", nullable: false),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()")
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
                 },
                 constraints: table =>
                 {
@@ -274,8 +274,8 @@ namespace FootballField.API.Migrations
                     end_time = table.Column<TimeSpan>(type: "time", nullable: false),
                     price = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
                     is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()")
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
                 },
                 constraints: table =>
                 {
@@ -298,29 +298,27 @@ namespace FootballField.API.Migrations
                     field_id = table.Column<int>(type: "int", nullable: false),
                     customer_id = table.Column<int>(type: "int", nullable: false),
                     owner_id = table.Column<int>(type: "int", nullable: false),
-                    booking_date = table.Column<DateTime>(type: "datetime2", nullable: false),
                     time_slot_id = table.Column<int>(type: "int", nullable: false),
-                    deposit_amount = table.Column<int>(type: "int", nullable: false),
-                    total_amount = table.Column<int>(type: "int", nullable: false),
-                    booking_status = table.Column<byte>(type: "tinyint", nullable: false),
-                    payment_status = table.Column<byte>(type: "tinyint", nullable: false),
-                    payment_method = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    transaction_id = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    booking_date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    hold_expires_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    total_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    deposit_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    payment_proof_url = table.Column<string>(type: "varchar(max)", unicode: false, nullable: true),
                     note = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    cancelled_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    booking_status = table.Column<byte>(type: "tinyint", nullable: false),
+                    approved_by = table.Column<int>(type: "int", nullable: true),
+                    approved_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     cancelled_by = table.Column<int>(type: "int", nullable: true),
-                    CancellationReason = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
-                    IsCompleted = table.Column<bool>(type: "bit", nullable: false)
+                    cancelled_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_BOOKING", x => x.id);
-                    table.CheckConstraint("CK_Booking_Amount", "deposit_amount >= 0 AND total_amount >= deposit_amount");
-                    table.CheckConstraint("CK_Booking_Date_Future", "booking_date >= GETDATE()");
-                    table.CheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 4");
-                    table.CheckConstraint("CK_Payment_Status", "payment_status BETWEEN 0 AND 3");
+                    table.CheckConstraint("CK_Booking_DepositAmount", "deposit_amount >= 0 AND deposit_amount <= total_amount");
+                    table.CheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 7");
+                    table.CheckConstraint("CK_Booking_TotalAmount", "total_amount > 0");
                     table.ForeignKey(
                         name: "FK_BOOKING_FIELD_field_id",
                         column: x => x.field_id,
@@ -330,6 +328,11 @@ namespace FootballField.API.Migrations
                         name: "FK_BOOKING_TIME_SLOT_time_slot_id",
                         column: x => x.time_slot_id,
                         principalTable: "TIME_SLOT",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "FK_BOOKING_USER_approved_by",
+                        column: x => x.approved_by,
+                        principalTable: "USER",
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "FK_BOOKING_USER_cancelled_by",
@@ -358,12 +361,11 @@ namespace FootballField.API.Migrations
                     customer_id = table.Column<int>(type: "int", nullable: false),
                     complex_id = table.Column<int>(type: "int", nullable: false),
                     rating = table.Column<byte>(type: "tinyint", nullable: false),
-                    FieldId = table.Column<int>(type: "int", nullable: false),
                     comment = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     is_visible = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
                     deleted_at = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
@@ -382,17 +384,16 @@ namespace FootballField.API.Migrations
                         principalTable: "COMPLEX",
                         principalColumn: "id");
                     table.ForeignKey(
-                        name: "FK_REVIEW_FIELD_FieldId",
-                        column: x => x.FieldId,
-                        principalTable: "FIELD",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
                         name: "FK_REVIEW_USER_customer_id",
                         column: x => x.customer_id,
                         principalTable: "USER",
                         principalColumn: "id");
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BOOKING_approved_by",
+                table: "BOOKING",
+                column: "approved_by");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Booking_BookingDate_Status",
@@ -410,12 +411,6 @@ namespace FootballField.API.Migrations
                 column: "customer_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_BOOKING_field_id_booking_date_time_slot_id",
-                table: "BOOKING",
-                columns: new[] { "field_id", "booking_date", "time_slot_id" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Booking_OwnerId",
                 table: "BOOKING",
                 column: "owner_id");
@@ -424,6 +419,13 @@ namespace FootballField.API.Migrations
                 name: "IX_BOOKING_time_slot_id",
                 table: "BOOKING",
                 column: "time_slot_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Booking_UniqueActiveSlot",
+                table: "BOOKING",
+                columns: new[] { "field_id", "booking_date", "time_slot_id" },
+                unique: true,
+                filter: "[booking_status] IN (0, 1, 2)");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Complex_OwnerId",
@@ -481,11 +483,6 @@ namespace FootballField.API.Migrations
                 name: "IX_REVIEW_customer_id",
                 table: "REVIEW",
                 column: "customer_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_REVIEW_FieldId",
-                table: "REVIEW",
-                column: "FieldId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_SYSTEM_CONFIG_config_key",

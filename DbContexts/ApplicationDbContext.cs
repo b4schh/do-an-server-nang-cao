@@ -48,8 +48,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Status).HasColumnName("status").IsRequired();
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
             entity.Property(e => e.DeletedBy).HasColumnName("deleted_by");
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
 
             entity.HasIndex(e => e.Email).IsUnique();
@@ -85,8 +85,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Status).HasColumnName("status").IsRequired();
             entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
 
             entity.HasIndex(e => e.OwnerId).HasDatabaseName("IX_Complex_OwnerId");
@@ -111,8 +111,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.FieldSize).HasColumnName("field_size").HasMaxLength(50).IsUnicode(true);
             entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
 
             entity.HasIndex(e => e.ComplexId).HasDatabaseName("IX_Field_ComplexId");
@@ -136,8 +136,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.EndTime).HasColumnName("end_time").IsRequired();
             entity.Property(e => e.Price).HasColumnName("price").HasColumnType("decimal(10,2)").IsRequired();
             entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
             entity.HasIndex(e => e.FieldId).HasDatabaseName("IX_TimeSlot_FieldId");
             entity.HasIndex(e => new { e.FieldId, e.StartTime, e.EndTime }).IsUnique();
@@ -164,7 +164,7 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(e => e.UserId).HasColumnName("user_id").IsRequired();
             entity.Property(e => e.ComplexId).HasColumnName("complex_id").IsRequired();
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
             entity.HasIndex(e => new { e.UserId, e.ComplexId }).IsUnique();
 
@@ -190,31 +190,38 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.FieldId).HasColumnName("field_id").IsRequired();
             entity.Property(e => e.CustomerId).HasColumnName("customer_id").IsRequired();
             entity.Property(e => e.OwnerId).HasColumnName("owner_id").IsRequired();
-            entity.Property(e => e.BookingDate).HasColumnName("booking_date").IsRequired();
             entity.Property(e => e.TimeSlotId).HasColumnName("time_slot_id").IsRequired();
-            entity.Property(e => e.DepositAmount).HasColumnName("deposit_amount").IsRequired();
-            entity.Property(e => e.TotalAmount).HasColumnName("total_amount").IsRequired();
-            entity.Property(e => e.BookingStatus).HasColumnName("booking_status").IsRequired();
-            entity.Property(e => e.PaymentStatus).HasColumnName("payment_status").IsRequired();
-            entity.Property(e => e.PaymentMethod).HasColumnName("payment_method").HasMaxLength(50).IsUnicode(true);
-            entity.Property(e => e.TransactionId).HasColumnName("transaction_id").HasMaxLength(50);
+            entity.Property(e => e.BookingDate).HasColumnName("booking_date").IsRequired();
+            entity.Property(e => e.HoldExpiresAt).HasColumnName("hold_expires_at").IsRequired();
+            entity.Property(e => e.TotalAmount).HasColumnName("total_amount").HasColumnType("decimal(10,2)").IsRequired();
+            entity.Property(e => e.DepositAmount).HasColumnName("deposit_amount").HasColumnType("decimal(10,2)").IsRequired();
+            entity.Property(e => e.PaymentProofUrl).HasColumnName("payment_proof_url").IsUnicode(false);
             entity.Property(e => e.Note).HasColumnName("note").HasMaxLength(255).IsUnicode(true);
-            entity.Property(e => e.CancelledAt).HasColumnName("cancelled_at");
+            entity.Property(e => e.BookingStatus).HasColumnName("booking_status").IsRequired();
+            entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
+            entity.Property(e => e.ApprovedAt).HasColumnName("approved_at");
             entity.Property(e => e.CancelledBy).HasColumnName("cancelled_by");
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CancelledAt).HasColumnName("cancelled_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
             // CHECK constraints
             entity.ToTable(tb =>
             {
-                tb.HasCheckConstraint("CK_Booking_Amount", "deposit_amount >= 0 AND total_amount >= deposit_amount");
-                tb.HasCheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 4");
-                tb.HasCheckConstraint("CK_Payment_Status", "payment_status BETWEEN 0 AND 3");
-                tb.HasCheckConstraint("CK_Booking_Date_Future", "booking_date >= GETDATE()");
+                tb.HasCheckConstraint("CK_Booking_TotalAmount", "total_amount > 0");
+                tb.HasCheckConstraint("CK_Booking_DepositAmount", "deposit_amount >= 0 AND deposit_amount <= total_amount");
+                tb.HasCheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 7");
             });
 
             // Indexes
-            entity.HasIndex(e => new { e.FieldId, e.BookingDate, e.TimeSlotId }).IsUnique();
+            // Filtered unique index: chỉ áp dụng unique cho các trạng thái đang chiếm slot
+            // Pending(0), WaitingForApproval(1), Confirmed(2) - các trạng thái này chiếm slot
+            // Rejected(3), Cancelled(4), Completed(5), Expired(6), NoShow(7) - không chiếm slot nữa
+            entity.HasIndex(e => new { e.FieldId, e.BookingDate, e.TimeSlotId })
+                .IsUnique()
+                .HasDatabaseName("IX_Booking_UniqueActiveSlot")
+                .HasFilter("[booking_status] IN (0, 1, 2)"); // Chỉ unique cho Pending, WaitingForApproval, Confirmed
+
             entity.HasIndex(e => e.CustomerId).HasDatabaseName("IX_Booking_CustomerId");
             entity.HasIndex(e => e.OwnerId).HasDatabaseName("IX_Booking_OwnerId");
             entity.HasIndex(e => new { e.BookingDate, e.BookingStatus }).HasDatabaseName("IX_Booking_BookingDate_Status");
@@ -240,6 +247,11 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.TimeSlotId)
                 .OnDelete(DeleteBehavior.NoAction);
 
+            entity.HasOne(e => e.ApprovedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.ApprovedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
             entity.HasOne(e => e.CancelledByUser)
                 .WithMany()
                 .HasForeignKey(e => e.CancelledBy)
@@ -261,8 +273,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Comment).HasColumnName("comment").HasMaxLength(255).IsUnicode(true);
             entity.Property(e => e.IsVisible).HasColumnName("is_visible").HasDefaultValue(true);
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
 
             entity.HasIndex(e => e.ComplexId).HasDatabaseName("IX_Review_ComplexId");
@@ -319,8 +331,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.DepositRate).HasColumnName("deposit_rate").HasColumnType("decimal(5,2)");
             entity.Property(e => e.MinBookingNotice).HasColumnName("min_booking_notice");
             entity.Property(e => e.AllowReview).HasColumnName("allow_review").HasDefaultValue(true);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
             entity.HasIndex(e => e.OwnerId).IsUnique();
 
@@ -344,7 +356,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ConfigValue).HasColumnName("config_value").HasMaxLength(255).IsUnicode(true);
             entity.Property(e => e.DataType).HasColumnName("data_type").HasMaxLength(20).HasDefaultValue("string").IsUnicode(false);
             entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(255).IsUnicode(true);
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
             entity.HasIndex(e => e.ConfigKey).IsUnique();
 
@@ -368,7 +380,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.TargetTable).HasColumnName("target_table").HasMaxLength(100).IsUnicode(true);
             entity.Property(e => e.TargetId).HasColumnName("target_id");
             entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(500).IsUnicode(true);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
             entity.HasOne<User>()
                 .WithMany()
@@ -387,7 +399,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.LogLevel).HasColumnName("log_level").HasMaxLength(20).IsUnicode(false);
             entity.Property(e => e.Source).HasColumnName("source").HasMaxLength(100).IsUnicode(true);
             entity.Property(e => e.Message).HasColumnName("message").IsUnicode(true);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
         });
 
         // ======================= NOTIFICATION =======================
@@ -406,7 +418,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.RelatedTable).HasColumnName("related_table").HasMaxLength(100).IsUnicode(true);
             entity.Property(e => e.RelatedId).HasColumnName("related_id");
             entity.Property(e => e.IsRead).HasColumnName("is_read").HasDefaultValue(false);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
             entity.Property(e => e.ReadAt).HasColumnName("read_at");
 
             entity.HasIndex(e => new { e.UserId, e.IsRead }).HasDatabaseName("IX_Notification_UserId_IsRead");
@@ -441,17 +453,20 @@ public class ApplicationDbContext : DbContext
         var entries = ChangeTracker.Entries()
             .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
 
+        var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        var vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
+
         foreach (var entry in entries)
         {
             var updatedAtProperty = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "UpdatedAt");
             if (updatedAtProperty != null)
-                updatedAtProperty.CurrentValue = DateTime.Now;
+                updatedAtProperty.CurrentValue = vietnamNow;
 
             if (entry.State == EntityState.Added)
             {
                 var createdAtProperty = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "CreatedAt");
                 if (createdAtProperty != null)
-                    createdAtProperty.CurrentValue = DateTime.Now;
+                    createdAtProperty.CurrentValue = vietnamNow;
             }
         }
     }

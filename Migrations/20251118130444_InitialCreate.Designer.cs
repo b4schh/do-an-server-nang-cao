@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FootballField.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251108040947_InitialCreate")]
+    [Migration("20251118130444_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -34,6 +34,14 @@ namespace FootballField.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("approved_at");
+
+                    b.Property<int?>("ApprovedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("approved_by");
+
                     b.Property<DateTime>("BookingDate")
                         .HasColumnType("datetime2")
                         .HasColumnName("booking_date");
@@ -41,9 +49,6 @@ namespace FootballField.API.Migrations
                     b.Property<byte>("BookingStatus")
                         .HasColumnType("tinyint")
                         .HasColumnName("booking_status");
-
-                    b.Property<string>("CancellationReason")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("CancelledAt")
                         .HasColumnType("datetime2")
@@ -57,22 +62,23 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<int>("CustomerId")
                         .HasColumnType("int")
                         .HasColumnName("customer_id");
 
-                    b.Property<int>("DepositAmount")
-                        .HasColumnType("int")
+                    b.Property<decimal>("DepositAmount")
+                        .HasColumnType("decimal(10,2)")
                         .HasColumnName("deposit_amount");
 
                     b.Property<int>("FieldId")
                         .HasColumnType("int")
                         .HasColumnName("field_id");
 
-                    b.Property<bool>("IsCompleted")
-                        .HasColumnType("bit");
+                    b.Property<DateTime>("HoldExpiresAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("hold_expires_at");
 
                     b.Property<string>("Note")
                         .HasMaxLength(255)
@@ -84,36 +90,28 @@ namespace FootballField.API.Migrations
                         .HasColumnType("int")
                         .HasColumnName("owner_id");
 
-                    b.Property<string>("PaymentMethod")
-                        .HasMaxLength(50)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("payment_method");
-
-                    b.Property<byte>("PaymentStatus")
-                        .HasColumnType("tinyint")
-                        .HasColumnName("payment_status");
+                    b.Property<string>("PaymentProofUrl")
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(max)")
+                        .HasColumnName("payment_proof_url");
 
                     b.Property<int>("TimeSlotId")
                         .HasColumnType("int")
                         .HasColumnName("time_slot_id");
 
-                    b.Property<int>("TotalAmount")
-                        .HasColumnType("int")
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(10,2)")
                         .HasColumnName("total_amount");
-
-                    b.Property<string>("TransactionId")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("transaction_id");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApprovedBy");
 
                     b.HasIndex("CancelledBy");
 
@@ -129,17 +127,17 @@ namespace FootballField.API.Migrations
                         .HasDatabaseName("IX_Booking_BookingDate_Status");
 
                     b.HasIndex("FieldId", "BookingDate", "TimeSlotId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_Booking_UniqueActiveSlot")
+                        .HasFilter("[booking_status] IN (0, 1, 2)");
 
                     b.ToTable("BOOKING", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Booking_Amount", "deposit_amount >= 0 AND total_amount >= deposit_amount");
+                            t.HasCheckConstraint("CK_Booking_DepositAmount", "deposit_amount >= 0 AND deposit_amount <= total_amount");
 
-                            t.HasCheckConstraint("CK_Booking_Date_Future", "booking_date >= GETDATE()");
+                            t.HasCheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 7");
 
-                            t.HasCheckConstraint("CK_Booking_Status", "booking_status BETWEEN 0 AND 4");
-
-                            t.HasCheckConstraint("CK_Payment_Status", "payment_status BETWEEN 0 AND 3");
+                            t.HasCheckConstraint("CK_Booking_TotalAmount", "total_amount > 0");
                         });
                 });
 
@@ -160,7 +158,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2")
@@ -224,7 +222,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<string>("Ward")
                         .HasMaxLength(100)
@@ -289,7 +287,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int")
@@ -322,7 +320,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2")
@@ -363,7 +361,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -386,7 +384,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<bool>("IsRead")
                         .ValueGeneratedOnAdd()
@@ -460,7 +458,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<decimal?>("DepositRate")
                         .HasColumnType("decimal(5,2)")
@@ -478,7 +476,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -520,7 +518,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<int>("CustomerId")
                         .HasColumnType("int")
@@ -529,9 +527,6 @@ namespace FootballField.API.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2")
                         .HasColumnName("deleted_at");
-
-                    b.Property<int>("FieldId")
-                        .HasColumnType("int");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -553,7 +548,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -563,8 +558,6 @@ namespace FootballField.API.Migrations
                         .HasDatabaseName("IX_Review_ComplexId");
 
                     b.HasIndex("CustomerId");
-
-                    b.HasIndex("FieldId");
 
                     b.ToTable("REVIEW", null, t =>
                         {
@@ -613,7 +606,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -639,7 +632,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<string>("LogLevel")
                         .HasMaxLength(20)
@@ -676,7 +669,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<TimeSpan>("EndTime")
                         .HasColumnType("time")
@@ -704,7 +697,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -738,7 +731,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2")
@@ -795,7 +788,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.HasKey("Id");
 
@@ -827,7 +820,7 @@ namespace FootballField.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
@@ -858,6 +851,11 @@ namespace FootballField.API.Migrations
 
             modelBuilder.Entity("FootballField.API.Entities.Booking", b =>
                 {
+                    b.HasOne("FootballField.API.Entities.User", "ApprovedByUser")
+                        .WithMany()
+                        .HasForeignKey("ApprovedBy")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("FootballField.API.Entities.User", "CancelledByUser")
                         .WithMany()
                         .HasForeignKey("CancelledBy")
@@ -886,6 +884,8 @@ namespace FootballField.API.Migrations
                         .HasForeignKey("TimeSlotId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("ApprovedByUser");
 
                     b.Navigation("CancelledByUser");
 
@@ -999,19 +999,11 @@ namespace FootballField.API.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("FootballField.API.Entities.Field", "Field")
-                        .WithMany()
-                        .HasForeignKey("FieldId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Booking");
 
                     b.Navigation("Complex");
 
                     b.Navigation("Customer");
-
-                    b.Navigation("Field");
                 });
 
             modelBuilder.Entity("FootballField.API.Entities.TimeSlot", b =>

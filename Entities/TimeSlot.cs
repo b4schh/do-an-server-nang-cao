@@ -8,8 +8,8 @@ public class TimeSlot
     public TimeSpan EndTime { get; set; }
     public decimal Price { get; set; }
     public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     // Navigation properties
     public Field Field { get; set; } = null!;

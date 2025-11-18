@@ -64,7 +64,6 @@ namespace FootballField.API.Controllers
             );
         }
 
-
         // Cập nhật TimeSlot
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,Owner")]
@@ -77,7 +76,6 @@ namespace FootballField.API.Controllers
 
             return Ok(ApiResponse<string>.Ok("", "Cập nhật khung giờ thành công"));
         }
-
 
         // Xóa TimeSlot
         [HttpDelete("{id}")]

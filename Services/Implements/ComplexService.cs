@@ -5,6 +5,7 @@ using FootballField.API.Dtos.TimeSlot;
 using FootballField.API.Dtos.Field;
 using FootballField.API.Repositories.Interfaces;
 using FootballField.API.Services.Interfaces;
+using FootballField.API.Utils;
 
 namespace FootballField.API.Services.Implements
 {
@@ -59,8 +60,10 @@ namespace FootballField.API.Services.Implements
 
             var complexDto = _mapper.Map<ComplexFullDetailsDto>(complex);
 
+            // Lấy danh sách booking cho ngày được chọn từ Repository
             var bookedTimeSlots = await _bookingRepository.GetBookedTimeSlotIdsForComplexAsync(id, date);
 
+            // Map fields với timeslots và trạng thái availability
             complexDto.Fields = complex.Fields.Select(f => new FieldWithTimeSlotsDto
             {
                 Id = f.Id,
@@ -76,7 +79,7 @@ namespace FootballField.API.Services.Implements
                     EndTime = ts.EndTime,
                     Price = ts.Price,
                     IsActive = ts.IsActive,
-                    IsBooked = bookedTimeSlots.Contains(ts.Id)
+                    IsBooked = bookedTimeSlots.Contains((f.Id, ts.Id))
                 }).OrderBy(ts => ts.StartTime)
             });
 
@@ -159,8 +162,7 @@ namespace FootballField.API.Services.Implements
         public async Task<ComplexDto> CreateComplexAsync(CreateComplexDto createComplexDto)
         {
             var complex = _mapper.Map<Complex>(createComplexDto);
-            complex.CreatedAt = DateTime.Now;
-            complex.UpdatedAt = DateTime.Now;
+            // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             var created = await _complexRepository.AddAsync(complex);
             return _mapper.Map<ComplexDto>(created);
@@ -170,8 +172,7 @@ namespace FootballField.API.Services.Implements
         {
             var complex = _mapper.Map<Complex>(createComplexDto);
             complex.OwnerId = ownerId;
-            complex.CreatedAt = DateTime.Now;
-            complex.UpdatedAt = DateTime.Now;
+            // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             var created = await _complexRepository.AddAsync(complex);
             return _mapper.Map<ComplexDto>(created);
@@ -189,8 +190,7 @@ namespace FootballField.API.Services.Implements
                 throw new Exception("User này không phải là Owner hoặc Admin, không thể tạo sân");
 
             var complex = _mapper.Map<Complex>(createComplexDto);
-            complex.CreatedAt = DateTime.Now;
-            complex.UpdatedAt = DateTime.Now;
+            // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             var created = await _complexRepository.AddAsync(complex);
             return _mapper.Map<ComplexDto>(created);
@@ -203,7 +203,7 @@ namespace FootballField.API.Services.Implements
                 throw new Exception("Complex not found");
 
             _mapper.Map(updateComplexDto, existingComplex);
-            existingComplex.UpdatedAt = DateTime.Now;
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _complexRepository.UpdateAsync(existingComplex);
         }
@@ -223,7 +223,7 @@ namespace FootballField.API.Services.Implements
                 throw new Exception("Chỉ có thể phê duyệt sân đang ở trạng thái Pending");
 
             complex.Status = ComplexStatus.Approved;
-            complex.UpdatedAt = DateTime.Now;
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _complexRepository.UpdateAsync(complex);
         }
@@ -238,7 +238,7 @@ namespace FootballField.API.Services.Implements
                 throw new Exception("Chỉ có thể từ chối sân đang ở trạng thái Pending");
 
             complex.Status = ComplexStatus.Rejected;
-            complex.UpdatedAt = DateTime.Now;
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _complexRepository.UpdateAsync(complex);
         }

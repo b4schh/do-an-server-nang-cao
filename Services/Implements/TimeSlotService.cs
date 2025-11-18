@@ -3,6 +3,7 @@ using FootballField.API.Entities;
 using FootballField.API.Dtos.TimeSlot;
 using FootballField.API.Repositories.Interfaces;
 using FootballField.API.Services.Interfaces;
+using FootballField.API.Utils;
 
 namespace FootballField.API.Services.Implements
 {
@@ -51,8 +52,7 @@ namespace FootballField.API.Services.Implements
             }
 
             var timeSlot = _mapper.Map<TimeSlot>(dto);
-            timeSlot.CreatedAt = DateTime.Now;
-            timeSlot.UpdatedAt = DateTime.Now;
+            // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             var created = await _timeSlotRepository.AddAsync(timeSlot);
             return (true, null, _mapper.Map<TimeSlotDto>(created));
@@ -75,7 +75,7 @@ namespace FootballField.API.Services.Implements
             }
 
             _mapper.Map(dto, existingTimeSlot);
-            existingTimeSlot.UpdatedAt = DateTime.Now;
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _timeSlotRepository.UpdateAsync(existingTimeSlot);
             return (true, null);

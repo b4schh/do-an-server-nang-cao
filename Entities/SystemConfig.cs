@@ -7,5 +7,5 @@ public class SystemConfig
     public string? ConfigValue { get; set; }
     public string DataType { get; set; } = "string";
     public string? Description { get; set; }
-    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    public DateTime UpdatedAt { get; set; }
 }

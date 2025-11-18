@@ -7,8 +7,8 @@ public class OwnerSetting
     public decimal? DepositRate { get; set; }
     public int? MinBookingNotice { get; set; }
     public bool AllowReview { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     // Navigation properties
     public User Owner { get; set; } = null!;

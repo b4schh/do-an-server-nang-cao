@@ -1,0 +1,95 @@
+### Authentication endpoints are in do-an-server-nang-cao.http
+
+### ========================================
+### BOOKING API TESTS
+### ========================================
+
+@baseUrl = https://localhost:5033
+@token = YOUR_JWT_TOKEN_HERE
+@customerToken = YOUR_CUSTOMER_TOKEN_HERE
+@ownerToken = YOUR_OWNER_TOKEN_HERE
+
+### 1. Khách tạo booking mới (Bước 1)
+POST {{baseUrl}}/api/bookings
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "fieldId": 1,
+  "timeSlotId": 1,
+  "bookingDate": "2024-11-20",
+  "note": "Đặt sân cho trận đấu giao hữu"
+}
+
+### 2. Khách upload bill thanh toán (Bước 2)
+POST {{baseUrl}}/api/bookings/1/upload-payment
+Authorization: Bearer {{customerToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="PaymentProofImage"; filename="payment-proof.jpg"
+Content-Type: image/jpeg
+
+< ./payment-proof.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="PaymentNote"
+
+Đã chuyển khoản cọc
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 3. Chủ sân duyệt booking (Bước 3)
+POST {{baseUrl}}/api/bookings/1/approve
+Authorization: Bearer {{ownerToken}}
+
+### 4. Chủ sân từ chối booking
+POST {{baseUrl}}/api/bookings/1/reject
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "reason": "Ảnh bill không rõ ràng"
+}
+
+### 5. Hủy booking (khách hoặc chủ sân)
+POST {{baseUrl}}/api/bookings/1/cancel
+Authorization: Bearer {{customerToken}}
+
+### 6. Chủ sân đánh dấu hoàn thành
+POST {{baseUrl}}/api/bookings/1/complete
+Authorization: Bearer {{ownerToken}}
+
+### 7. Chủ sân đánh dấu khách không đến
+POST {{baseUrl}}/api/bookings/1/no-show
+Authorization: Bearer {{ownerToken}}
+
+### 8. Khách xem danh sách booking của mình
+GET {{baseUrl}}/api/bookings/my-bookings
+Authorization: Bearer {{customerToken}}
+
+### 9. Khách xem booking của mình với filter status
+GET {{baseUrl}}/api/bookings/my-bookings?status=2
+Authorization: Bearer {{customerToken}}
+
+### 10. Chủ sân xem danh sách booking
+GET {{baseUrl}}/api/bookings/owner-bookings
+Authorization: Bearer {{ownerToken}}
+
+### 11. Chủ sân xem booking với filter status
+GET {{baseUrl}}/api/bookings/owner-bookings?status=1
+Authorization: Bearer {{ownerToken}}
+
+### 12. Xem chi tiết booking theo ID
+GET {{baseUrl}}/api/bookings/1
+Authorization: Bearer {{customerToken}}
+
+### ========================================
+### BOOKING STATUS VALUES
+### ========================================
+# 0 = Pending (Chờ thanh toán cọc)
+# 1 = WaitingForApproval (Chờ duyệt)
+# 2 = Confirmed (Đã xác nhận)
+# 3 = Rejected (Đã từ chối)
+# 4 = Cancelled (Đã hủy)
+# 5 = Completed (Hoàn thành)
+# 6 = Expired (Hết hạn)
+# 7 = NoShow (Không đến)

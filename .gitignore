@@ -407,7 +407,10 @@ appsettings.Staging.json
 
 # Environment variables
 .env
+.env.dev
+.env.prod
 .env.local
+.env.*.local
 .env.development
 .env.production
 
@@ -445,3 +448,5 @@ tmp/
 # Backup files
 *.bak
 *.backup
+
+prompt/

@@ -32,5 +32,12 @@ namespace FootballField.API.Repositories.Implements
                 .Include(f => f.Complex)
                 .FirstOrDefaultAsync(f => f.Id == fieldId && !f.IsDeleted);
         }
+
+        public async Task<Field?> GetFieldWithComplexAsync(int fieldId)
+        {
+            return await _dbSet
+                .Include(f => f.Complex)
+                .FirstOrDefaultAsync(f => f.Id == fieldId && !f.IsDeleted);
+        }
     }
 }

@@ -21,7 +21,7 @@ public class Notification
     public string? RelatedTable { get; set; }
     public int? RelatedId { get; set; }
     public bool IsRead { get; set; } = false;
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; }
     public DateTime? ReadAt { get; set; }
 
     // Navigation properties

@@ -3,6 +3,7 @@ using FootballField.API.Entities;
 using FootballField.API.Dtos.User;
 using FootballField.API.Repositories.Interfaces;
 using FootballField.API.Services.Interfaces;
+using FootballField.API.Utils;
 
 namespace FootballField.API.Services.Implements
 {
@@ -45,9 +46,9 @@ namespace FootballField.API.Services.Implements
         public async Task<UserDto> CreateUserAsync(CreateUserDto createUserDto)
         {
             var user = _mapper.Map<User>(createUserDto);
-            user.CreatedAt = DateTime.Now;
-            user.UpdatedAt = DateTime.Now;
-            
+            // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
+            // Không cần set thủ công nữa
+
             var created = await _userRepository.AddAsync(user);
             return _mapper.Map<UserDto>(created);
         }
@@ -59,7 +60,7 @@ namespace FootballField.API.Services.Implements
                 throw new Exception("User not found");
 
             _mapper.Map(updateUserDto, existingUser);
-            existingUser.UpdatedAt = DateTime.Now;
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _userRepository.UpdateAsync(existingUser);
         }
@@ -71,11 +72,11 @@ namespace FootballField.API.Services.Implements
                 throw new Exception("User not found");
 
             existingUser.Role = updateUserRoleDto.Role;
-            existingUser.UpdatedAt = DateTime.Now;
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _userRepository.UpdateAsync(existingUser);
         }
-        
+
         public async Task SoftDeleteUserAsync(int id)
         {
             await _userRepository.SoftDeleteAsync(id);
