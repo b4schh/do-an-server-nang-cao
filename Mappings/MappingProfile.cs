@@ -4,6 +4,7 @@ using FootballField.API.Dtos.User;
 using FootballField.API.Dtos.Complex;
 using FootballField.API.Dtos.Field;
 using FootballField.API.Dtos.TimeSlot;
+using FootballField.API.Dtos.Review;
 
 namespace FootballField.API.Mappings
 {
@@ -53,6 +54,24 @@ namespace FootballField.API.Mappings
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.FieldId, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+
+            // Review Mapping
+            CreateMap<Review, ReviewDto>()
+                .ForMember(dest => dest.CustomerName, opt => opt.MapFrom(src => 
+                    src.Customer.FirstName + " " + src.Customer.LastName))
+                .ForMember(dest => dest.FieldName, opt => opt.MapFrom(src => src.Field.Name))
+                .ForMember(dest => dest.ComplexName, opt => opt.MapFrom(src => src.Complex.Name));
+            CreateMap<CreateReviewDto, Review>();
+            CreateMap<UpdateReviewDto, Review>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.BookingId, opt => opt.Ignore())
+                .ForMember(dest => dest.CustomerId, opt => opt.Ignore())
+                .ForMember(dest => dest.FieldId, opt => opt.Ignore())
+                .ForMember(dest => dest.ComplexId, opt => opt.Ignore())
+                .ForMember(dest => dest.IsVisible, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.DeletedAt, opt => opt.Ignore());
         }
     }
 }

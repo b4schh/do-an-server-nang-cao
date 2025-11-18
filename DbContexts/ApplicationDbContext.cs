@@ -268,22 +268,24 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(e => e.BookingId).HasColumnName("booking_id").IsRequired();
             entity.Property(e => e.CustomerId).HasColumnName("customer_id").IsRequired();
+            entity.Property(e => e.FieldId).HasColumnName("field_id").IsRequired();
             entity.Property(e => e.ComplexId).HasColumnName("complex_id").IsRequired();
             entity.Property(e => e.Rating).HasColumnName("rating").IsRequired();
-            entity.Property(e => e.Comment).HasColumnName("comment").HasMaxLength(255).IsUnicode(true);
+            entity.Property(e => e.Comment).HasColumnName("comment").HasMaxLength(1000).IsUnicode(true);
             entity.Property(e => e.IsVisible).HasColumnName("is_visible").HasDefaultValue(true);
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
 
+            entity.HasIndex(e => e.BookingId).IsUnique().HasDatabaseName("IX_Review_BookingId");
+            entity.HasIndex(e => e.FieldId).HasDatabaseName("IX_Review_FieldId");
             entity.HasIndex(e => e.ComplexId).HasDatabaseName("IX_Review_ComplexId");
 
             entity.ToTable(tb =>
             {
                 tb.HasCheckConstraint("CK_Review_Rating", "rating BETWEEN 1 AND 5");
             });
-
 
             entity.HasOne(e => e.Booking)
                 .WithMany(e => e.Reviews)
@@ -293,6 +295,11 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.Customer)
                 .WithMany(e => e.Reviews)
                 .HasForeignKey(e => e.CustomerId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.Field)
+                .WithMany(e => e.Reviews)
+                .HasForeignKey(e => e.FieldId)
                 .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(e => e.Complex)

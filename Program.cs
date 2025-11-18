@@ -35,8 +35,6 @@ CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("vi-VN");
 CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("vi-VN");
 
 // Đọc Connection String từ appsettings.json
-
-// Đọc Connection String từ appsettings.json
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
@@ -51,6 +49,9 @@ builder.Services.AddScoped<IComplexImageRepository, ComplexImageRepository>();
 builder.Services.AddScoped<IFieldRepository, FieldRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
+builder.Services.AddScoped<IOwnerSettingRepository, OwnerSettingRepository>();
+builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
+builder.Services.AddSingleton<ISseRepository, SseRepository>();
 
 // ========== ĐĂNG KÝ SERVICES ==========
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -60,6 +61,9 @@ builder.Services.AddScoped<IComplexImageService, ComplexImageService>();
 builder.Services.AddScoped<IFieldService, FieldService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITimeSlotService, TimeSlotService>();
+builder.Services.AddScoped<IOwnerSettingService, OwnerSettingService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // ========== ĐĂNG KÝ BACKGROUND SERVICES ==========
 builder.Services.AddHostedService<BookingExpirationBackgroundService>();

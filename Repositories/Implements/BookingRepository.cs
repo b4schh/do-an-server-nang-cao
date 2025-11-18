@@ -11,6 +11,17 @@ namespace FootballField.API.Repositories.Implements
         public BookingRepository(ApplicationDbContext context) : base(context)
         {
         }
+
+        public override async Task<Booking?> GetByIdAsync(int id)
+        {
+            return await _dbSet
+                .Include(b => b.Field)
+                    .ThenInclude(f => f.Complex)
+                .Include(b => b.TimeSlot)
+                .Include(b => b.Customer)
+                .Include(b => b.Owner)
+                .FirstOrDefaultAsync(b => b.Id == id);
+        }
         
         public async Task<HashSet<(int FieldId, int TimeSlotId)>> GetBookedTimeSlotIdsForComplexAsync(int complexId, DateTime date)
         {
