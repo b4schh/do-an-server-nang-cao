@@ -117,3 +117,5 @@ Dự án có sẵn dữ liệu mẫu được tự động seed khi chạy lần
 - 3 cụm sân bóng
 - 12 sân bóng (4-5 sân mỗi cụm)
 - 60 time slots (5 slots/sân)
+
+test CI/CD
