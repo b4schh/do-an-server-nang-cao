@@ -10,5 +10,7 @@ namespace FootballField.API.Services.Interfaces
         Task<UserDto?> GetCurrentUserAsync(int userId);
         Task<bool> ValidatePasswordAsync(string password, string hashedPassword);
         string HashPassword(string password);
+
+        bool VerifyPassword(string password, string hashedPassword);
     }
 }

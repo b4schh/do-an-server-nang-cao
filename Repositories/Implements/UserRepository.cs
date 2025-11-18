@@ -7,9 +7,12 @@ namespace FootballField.API.Repositories.Implements
 {
     public class UserRepository : GenericRepository<User>, IUserRepository
     {
+         private readonly ApplicationDbContext _db;
         public UserRepository(ApplicationDbContext context) : base(context)
         {
         }
+
+
 
         public async Task<User?> GetByEmailAsync(string email)
         {
@@ -35,5 +38,10 @@ namespace FootballField.API.Repositories.Implements
         {
             return await _dbSet.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
         }
+
+         public async Task<User?> FindByIdAsync(int id) =>
+            await _dbSet.FindAsync(id);
+
+          public async Task SaveChangesAsync() => await _db.SaveChangesAsync();
     }
 }

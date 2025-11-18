@@ -116,5 +116,18 @@ namespace FootballField.API.Services.Implements
             // Sử dụng BCrypt để hash password
             return BCrypt.Net.BCrypt.HashPassword(password);
         }
+
+        public bool VerifyPassword(string password, string hashedPassword)
+        {
+            try
+            {
+                // Sử dụng BCrypt để verify password
+                return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }
