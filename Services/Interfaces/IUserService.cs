@@ -11,8 +11,10 @@ namespace FootballField.API.Services.Interfaces
         Task<UserDto> CreateUserAsync(CreateUserDto createUserDto);
         Task UpdateUserAsync(int id, UpdateUserDto updateUserDto);
         Task UpdateUserRoleAsync(int id, UpdateUserRoleDto updateUserRoleDto);
-
         Task SoftDeleteUserAsync(int id);
         Task<bool> EmailExistsAsync(string email);
+        Task<UserResponseDto> UpdateAvatarAsync(int userId, string? avatarUrl);
+        Task<UserResponseDto> UpdateUserProfileAsync(int id, UpdateUserProfileDto dto);
+        Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
     }
 }

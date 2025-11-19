@@ -11,11 +11,13 @@ namespace FootballField.API.Services.Implements
     {
         private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
+        private readonly IAuthService _authService;
 
-        public UserService(IUserRepository userRepository, IMapper mapper)
+        public UserService(IUserRepository userRepository, IMapper mapper, IAuthService authService)
         {
             _userRepository = userRepository;
             _mapper = mapper;
+            _authService = authService;
         }
 
         public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
@@ -85,6 +87,74 @@ namespace FootballField.API.Services.Implements
         public async Task<bool> EmailExistsAsync(string email)
         {
             return await _userRepository.EmailExistsAsync(email);
+        }
+
+        
+        public async Task<UserResponseDto> UpdateAvatarAsync(int userId, string? avatarUrl)
+        {
+            var user = await _userRepository.FindByIdAsync(userId);
+            if (user == null) throw new Exception("User not found");
+
+            user.AvatarUrl = avatarUrl;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _userRepository.SaveChangesAsync();
+
+            return _mapper.Map<UserResponseDto>(user);
+        }
+
+
+        public async Task<UserResponseDto> UpdateUserProfileAsync(int id, UpdateUserProfileDto dto)
+        {
+            // Lấy user từ DB
+            var user = await _userRepository.FindByIdAsync(id);
+            if (user == null || user.IsDeleted)
+                throw new Exception("Không tìm thấy người dùng");
+
+            // Nếu client gửi phone khác, kiểm tra số điện thoại đã được dùng bởi user khác chưa
+            if (!string.IsNullOrEmpty(dto.Phone) && dto.Phone != user.Phone)
+            {
+                var existingWithPhone = await _userRepository.GetByPhoneAsync(dto.Phone);
+                if (existingWithPhone != null && existingWithPhone.Id != id)
+                    throw new Exception("Số điện thoại đã được sử dụng bởi người khác");
+            }
+
+            // Cập nhật thông tin
+            if (!string.IsNullOrWhiteSpace(dto.FirstName))
+                user.FirstName = dto.FirstName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.LastName))
+                user.LastName = dto.LastName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.Phone))
+                user.Phone = dto.Phone.Trim();
+
+            user.UpdatedAt = DateTime.UtcNow.AddHours(7);
+
+            await _userRepository.SaveChangesAsync();
+
+            return _mapper.Map<UserResponseDto>(user);
+        }
+
+
+        public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+        {
+            var user = await _userRepository.FindByIdAsync(userId);
+            if (user == null || user.IsDeleted)
+                throw new Exception("Không tìm thấy người dùng");
+
+            // Kiểm tra mật khẩu hiện tại
+            if (!_authService.VerifyPassword(currentPassword, user.Password))
+            {
+                return false;
+            }
+
+            // Hash mật khẩu mới và lưu
+            user.Password = _authService.HashPassword(newPassword);
+            user.UpdatedAt = DateTime.UtcNow.AddHours(7);
+
+            await _userRepository.SaveChangesAsync();
+            return true;
         }
     }
 }

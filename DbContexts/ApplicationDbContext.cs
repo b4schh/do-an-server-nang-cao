@@ -278,8 +278,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
 
-            entity.HasIndex(e => e.BookingId).IsUnique().HasDatabaseName("IX_Review_BookingId");
-            entity.HasIndex(e => e.FieldId).HasDatabaseName("IX_Review_FieldId");
             entity.HasIndex(e => e.ComplexId).HasDatabaseName("IX_Review_ComplexId");
 
             entity.ToTable(tb =>
@@ -297,9 +295,9 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.CustomerId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            entity.HasOne(e => e.Field)
+            entity.HasOne(e => e.Complex)
                 .WithMany(e => e.Reviews)
-                .HasForeignKey(e => e.FieldId)
+                .HasForeignKey(e => e.ComplexId)
                 .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(e => e.Complex)

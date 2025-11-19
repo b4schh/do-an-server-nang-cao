@@ -215,7 +215,7 @@ public static class DatabaseSeeder
                 : (field.FieldSize == "Sân 7" ? 500000m : 800000m);
 
             var startOfDay = new TimeSpan(6, 0, 0);
-            var endOfDay = new TimeSpan(22, 0, 0);
+            var endOfDay = new TimeSpan(23, 59, 0);
             var slotDuration = new TimeSpan(1, 30, 0); // 1h30
 
             for (var start = startOfDay; start < endOfDay; start += slotDuration)

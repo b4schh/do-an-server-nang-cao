@@ -15,6 +15,8 @@ namespace FootballField.API.Mappings
             // User Mapping
             CreateMap<User, UserDto>();
             CreateMap<User, UserProfileDto>();
+            CreateMap<User, UserResponseDto>()
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role.ToString()));
             CreateMap<CreateUserDto, User>();
             CreateMap<UpdateUserDto, User>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())

@@ -16,6 +16,8 @@ namespace FootballField.API.Services.Implements
         private readonly IUserRepository _userRepository;
         private readonly IStorageService _storageService;
         private readonly IMapper _mapper;
+        private readonly INotificationService _notificationService;
+
         private const decimal DEFAULT_DEPOSIT_RATE = 0.3m; // 30% deposit
         private const int HOLD_MINUTES = 5;
 
@@ -25,7 +27,8 @@ namespace FootballField.API.Services.Implements
             ITimeSlotRepository timeSlotRepository,
             IUserRepository userRepository,
             IStorageService storageService,
-            IMapper mapper)
+            IMapper mapper,
+            INotificationService notificationService)
         {
             _bookingRepository = bookingRepository;
             _fieldRepository = fieldRepository;
@@ -33,62 +36,38 @@ namespace FootballField.API.Services.Implements
             _userRepository = userRepository;
             _storageService = storageService;
             _mapper = mapper;
+            _notificationService = notificationService;
         }
 
-        public async Task<BookingDto> CreateBookingAsync(int customerId, CreateBookingDto dto)
+      public async Task<BookingDto> CreateBookingAsync(int customerId, CreateBookingDto dto)
         {
             var vietnamNow = TimeZoneHelper.VietnamNow;
-            
-            // Validate booking date is in the future
+
+            // Validate booking date
             if (dto.BookingDate.Date < vietnamNow.Date)
-            {
                 throw new InvalidOperationException("Không thể đặt sân cho ngày trong quá khứ");
-            }
 
-            // Check if field exists and get with complex
-            var field = await _fieldRepository.GetFieldWithComplexAsync(dto.FieldId);
-            if (field == null)
-            {
-                throw new InvalidOperationException("Sân không tồn tại");
-            }
-
-            // Check if timeslot exists and get price
-            var timeSlot = await _timeSlotRepository.GetByIdAsync(dto.TimeSlotId);
-            if (timeSlot == null)
-            {
-                throw new InvalidOperationException("Khung giờ không tồn tại");
-            }
+            // Get field and timeslot
+            var field = await _fieldRepository.GetFieldWithComplexAsync(dto.FieldId)
+                        ?? throw new InvalidOperationException("Sân không tồn tại");
+            var timeSlot = await _timeSlotRepository.GetByIdAsync(dto.TimeSlotId)
+                        ?? throw new InvalidOperationException("Khung giờ không tồn tại");
 
             if (timeSlot.FieldId != dto.FieldId)
-            {
                 throw new InvalidOperationException("Khung giờ không thuộc sân này");
-            }
 
-            // Validate booking time - không cho đặt khung giờ đã qua trong ngày hiện tại
-            if (dto.BookingDate.Date == vietnamNow.Date)
-            {
-                // Nếu đặt sân trong ngày hiện tại, check xem khung giờ đã qua chưa
-                if (timeSlot.StartTime <= vietnamNow.TimeOfDay)
-                {
-                    throw new InvalidOperationException("Không thể đặt khung giờ đã qua trong ngày hiện tại");
-                }
-            }
+            // Check booking in today
+            if (dto.BookingDate.Date == vietnamNow.Date && timeSlot.StartTime <= vietnamNow.TimeOfDay)
+                throw new InvalidOperationException("Không thể đặt khung giờ đã qua trong ngày hiện tại");
 
-            // Check if timeslot is already booked
-            var isBooked = await _bookingRepository.IsTimeSlotBookedAsync(dto.FieldId, dto.BookingDate, dto.TimeSlotId);
-            if (isBooked)
-            {
+            // Check timeslot availability
+            if (await _bookingRepository.IsTimeSlotBookedAsync(dto.FieldId, dto.BookingDate, dto.TimeSlotId))
                 throw new InvalidOperationException("Khung giờ này đã được đặt");
-            }
 
-            // Get owner from field's complex
             var ownerId = field.Complex.OwnerId;
-
-            // Calculate amounts
             var totalAmount = timeSlot.Price;
             var depositAmount = totalAmount * DEFAULT_DEPOSIT_RATE;
 
-            // Create booking
             var booking = new Booking
             {
                 FieldId = dto.FieldId,
@@ -104,9 +83,26 @@ namespace FootballField.API.Services.Implements
             };
 
             var created = await _bookingRepository.AddAsync(booking);
-            
-            // Reload booking với đầy đủ navigation properties
             var bookingWithDetails = await _bookingRepository.GetDetailAsync(created.Id);
+
+            // Notify owner
+            try
+            {
+                var ownerNotification = new Notification
+                {
+                    UserId = ownerId,
+                    SenderId = customerId,
+                    Title = $"Booking mới #{booking.Id}",
+                    Message = $"Khách hàng đã đặt sân {field.Name} cho ngày {dto.BookingDate:yyyy-MM-dd}",
+                    Type = NotificationType.Booking,
+                    RelatedTable = "Booking",
+                    RelatedId = booking.Id,
+                    IsRead = false
+                };
+                await _notificationService.CreateAndPushAsync(ownerNotification);
+            }
+            catch { }
+
             return MapToBookingDtoSync(bookingWithDetails!);
         }
 
@@ -154,6 +150,29 @@ namespace FootballField.API.Services.Implements
             booking.BookingStatus = BookingStatus.WaitingForApproval;
 
             await _bookingRepository.UpdateAsync(booking);
+
+            // Notify owner that a customer uploaded payment proof and is waiting for approval
+            try
+            {
+                var ownerNotification = new Notification
+                {
+                    UserId = booking.OwnerId,
+                    SenderId = booking.CustomerId,
+                    Title = $"Đơn #{booking.Id} có bill mới",
+                    Message = $"Khách hàng đã upload bill cho đơn #{booking.Id}. Vui lòng kiểm tra và duyệt hoặc từ chối.",
+                    Type = NotificationType.Booking,
+                    RelatedTable = "Booking",
+                    RelatedId = booking.Id,
+                    IsRead = false
+                };
+
+                await _notificationService.CreateAndPushAsync(ownerNotification);
+            }
+            catch
+            {
+                // best-effort: nếu push lỗi thì không block luồng chính
+            }
+
             return await MapToBookingDto(booking);
         }
 
@@ -183,6 +202,29 @@ namespace FootballField.API.Services.Implements
             booking.ApprovedAt = TimeZoneHelper.VietnamNow;
 
             await _bookingRepository.UpdateAsync(booking);
+
+            // Notify customer that booking was approved
+            try
+            {
+                var customerNotification = new Notification
+                {
+                    UserId = booking.CustomerId,
+                    SenderId = booking.OwnerId,
+                    Title = $"Đơn #{booking.Id} đã được duyệt",
+                    Message = $"Chủ sân đã duyệt đơn #{booking.Id} cho ngày {booking.BookingDate:yyyy-MM-dd}.",
+                    Type = NotificationType.Booking,
+                    RelatedTable = "Booking",
+                    RelatedId = booking.Id,
+                    IsRead = false
+                };
+
+                await _notificationService.CreateAndPushAsync(customerNotification);
+            }
+            catch
+            {
+                // best-effort
+            }
+
             return await MapToBookingDto(booking);
         }
 
@@ -214,6 +256,29 @@ namespace FootballField.API.Services.Implements
             }
 
             await _bookingRepository.UpdateAsync(booking);
+
+            // Notify customer that booking was rejected
+            try
+            {
+                var customerNotification = new Notification
+                {
+                    UserId = booking.CustomerId,
+                    SenderId = booking.OwnerId,
+                    Title = $"Đơn #{booking.Id} đã bị từ chối",
+                    Message = $"Chủ sân đã từ chối đơn #{booking.Id}. Lý do: {reason ?? "Không có lý do"}",
+                    Type = NotificationType.Booking,
+                    RelatedTable = "Booking",
+                    RelatedId = booking.Id,
+                    IsRead = false
+                };
+
+                await _notificationService.CreateAndPushAsync(customerNotification);
+            }
+            catch
+            {
+                // best-effort
+            }
+
             return await MapToBookingDto(booking);
         }
 
@@ -245,6 +310,46 @@ namespace FootballField.API.Services.Implements
             booking.CancelledAt = TimeZoneHelper.VietnamNow;
 
             await _bookingRepository.UpdateAsync(booking);
+
+            // Notify the other party (if customer cancelled notify owner, if owner cancelled notify customer)
+            try
+            {
+                if (userId == booking.CustomerId)
+                {
+                    var ownerNotification = new Notification
+                    {
+                        UserId = booking.OwnerId,
+                        SenderId = booking.CustomerId,
+                        Title = $"Đơn #{booking.Id} đã bị khách hủy",
+                        Message = $"Khách hàng đã hủy đơn #{booking.Id}.",
+                        Type = NotificationType.Booking,
+                        RelatedTable = "Booking",
+                        RelatedId = booking.Id,
+                        IsRead = false
+                    };
+                    await _notificationService.CreateAndPushAsync(ownerNotification);
+                }
+                else
+                {
+                    var customerNotification = new Notification
+                    {
+                        UserId = booking.CustomerId,
+                        SenderId = booking.OwnerId,
+                        Title = $"Đơn #{booking.Id} đã bị chủ sân hủy",
+                        Message = $"Chủ sân đã hủy đơn #{booking.Id}.",
+                        Type = NotificationType.Booking,
+                        RelatedTable = "Booking",
+                        RelatedId = booking.Id,
+                        IsRead = false
+                    };
+                    await _notificationService.CreateAndPushAsync(customerNotification);
+                }
+            }
+            catch
+            {
+                // best-effort
+            }
+
             return await MapToBookingDto(booking);
         }
 
@@ -279,6 +384,28 @@ namespace FootballField.API.Services.Implements
             booking.BookingStatus = BookingStatus.Completed;
 
             await _bookingRepository.UpdateAsync(booking);
+
+            // Optionally notify customer about completion
+            try
+            {
+                var customerNotification = new Notification
+                {
+                    UserId = booking.CustomerId,
+                    SenderId = booking.OwnerId,
+                    Title = $"Đơn #{booking.Id} đã hoàn thành",
+                    Message = $"Đơn #{booking.Id} đã được đánh dấu hoàn thành.",
+                    Type = NotificationType.Booking,
+                    RelatedTable = "Booking",
+                    RelatedId = booking.Id,
+                    IsRead = false
+                };
+                await _notificationService.CreateAndPushAsync(customerNotification);
+            }
+            catch
+            {
+                // best-effort
+            }
+
             return await MapToBookingDto(booking);
         }
 
@@ -313,6 +440,28 @@ namespace FootballField.API.Services.Implements
             booking.BookingStatus = BookingStatus.NoShow;
 
             await _bookingRepository.UpdateAsync(booking);
+
+            // Optionally notify customer about no-show
+            try
+            {
+                var customerNotification = new Notification
+                {
+                    UserId = booking.CustomerId,
+                    SenderId = booking.OwnerId,
+                    Title = $"Đơn #{booking.Id}: Khách không đến",
+                    Message = $"Đơn #{booking.Id} được đánh dấu NoShow.",
+                    Type = NotificationType.Booking,
+                    RelatedTable = "Booking",
+                    RelatedId = booking.Id,
+                    IsRead = false
+                };
+                await _notificationService.CreateAndPushAsync(customerNotification);
+            }
+            catch
+            {
+                // best-effort
+            }
+
             return await MapToBookingDto(booking);
         }
 
