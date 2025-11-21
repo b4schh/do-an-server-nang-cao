@@ -1,22 +1,30 @@
-using FootballField.API.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Any;
-using FootballField.API.Middlewares;
-using FootballField.API.DbContexts;
-using FootballField.API.Mappings;
-using FootballField.API.Repositories.Interfaces;
-using FootballField.API.Repositories.Implements;
-using FootballField.API.Services.Interfaces;
-using FootballField.API.Services.Implements;
-using Minio;
-using FootballField.API.Storage;
 using Microsoft.AspNetCore.Http.Features;
-using FootballField.API.BackgroundJobs;
 using System.Globalization;
+using Minio;
+
+// Shared Components
+using FootballField.API.Shared.Utils;
+using FootballField.API.Shared.Middlewares;
+using FootballField.API.Shared.Storage;
+
+// Database
+using FootballField.API.Database;
+
+// Module Registrations
+using FootballField.API.Modules.AuthManagement;
+using FootballField.API.Modules.UserManagement;
+using FootballField.API.Modules.ComplexManagement;
+using FootballField.API.Modules.FieldManagement;
+using FootballField.API.Modules.BookingManagement;
+using FootballField.API.Modules.ReviewManagement;
+using FootballField.API.Modules.NotificationManagement;
+using FootballField.API.Modules.OwnerSettingsManagement;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,31 +50,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // ========== ĐĂNG KÝ AUTOMAPPER ==========
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// ========== ĐĂNG KÝ REPOSITORIES ==========
-builder.Services.AddScoped<IBookingRepository, BookingRepository>();
-builder.Services.AddScoped<IComplexRepository, ComplexRepository>();
-builder.Services.AddScoped<IComplexImageRepository, ComplexImageRepository>();
-builder.Services.AddScoped<IFieldRepository, FieldRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
-builder.Services.AddScoped<IOwnerSettingRepository, OwnerSettingRepository>();
-builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
-builder.Services.AddSingleton<ISseRepository, SseRepository>();
-
-// ========== ĐĂNG KÝ SERVICES ==========
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IBookingService, BookingService>();
-builder.Services.AddScoped<IComplexService, ComplexService>();
-builder.Services.AddScoped<IComplexImageService, ComplexImageService>();
-builder.Services.AddScoped<IFieldService, FieldService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<ITimeSlotService, TimeSlotService>();
-builder.Services.AddScoped<IOwnerSettingService, OwnerSettingService>();
-builder.Services.AddScoped<IReviewService, ReviewService>();
-builder.Services.AddScoped<INotificationService, NotificationService>();
-
-// ========== ĐĂNG KÝ BACKGROUND SERVICES ==========
-builder.Services.AddHostedService<BookingExpirationBackgroundService>();
+// ========== ĐĂNG KÝ MODULE DEPENDENCIES ==========
+// Register all modules with their services and repositories
+builder.Services.AddAuthModule();
+builder.Services.AddUserModule();
+builder.Services.AddComplexManagementModule();
+builder.Services.AddFieldManagementModule();
+builder.Services.AddBookingModule();
+builder.Services.AddReviewModule();
+builder.Services.AddNotificationModule();
+builder.Services.AddOwnerSettingsModule();
 
 // ========== ĐĂNG KÝ UTILITIES ==========
 builder.Services.AddScoped<JwtHelper>();

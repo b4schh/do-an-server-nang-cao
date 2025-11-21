@@ -1,0 +1,157 @@
+using AutoMapper;
+using FootballField.API.Modules.AuthManagement.Services;
+using FootballField.API.Modules.UserManagement.Dtos;
+using FootballField.API.Modules.UserManagement.Entities;
+using FootballField.API.Modules.UserManagement.Repositories;
+
+namespace FootballField.API.Modules.UserManagement.Services
+{
+    public class UserService : IUserService
+    {
+        private readonly IUserRepository _userRepository;
+        private readonly IMapper _mapper;
+        private readonly IAuthService _authService;
+
+        public UserService(IUserRepository userRepository, IMapper mapper, IAuthService authService)
+        {
+            _userRepository = userRepository;
+            _mapper = mapper;
+            _authService = authService;
+        }
+
+        public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
+        {
+            var users = await _userRepository.GetAllAsync(u => !u.IsDeleted);
+            return _mapper.Map<IEnumerable<UserDto>>(users);
+        }
+
+        public async Task<(IEnumerable<UserDto> users, int totalCount)> GetPagedUsersAsync(int pageIndex, int pageSize)
+        {
+            var (users, totalCount) = await _userRepository.GetPagedAsync(pageIndex, pageSize, u => !u.IsDeleted);
+            var userDtos = _mapper.Map<IEnumerable<UserDto>>(users);
+            return (userDtos, totalCount);
+        }
+
+        public async Task<UserDto?> GetUserByIdAsync(int id)
+        {
+            var user = await _userRepository.GetByIdAsync(id);
+            return user == null ? null : _mapper.Map<UserDto>(user);
+        }
+
+        public async Task<UserDto?> GetUserByEmailAsync(string email)
+        {
+            var user = await _userRepository.GetByEmailAsync(email);
+            return user == null ? null : _mapper.Map<UserDto>(user);
+        }
+
+        public async Task<UserDto> CreateUserAsync(CreateUserDto createUserDto)
+        {
+            var user = _mapper.Map<User>(createUserDto);
+            // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
+            // Không cần set thủ công nữa
+
+            var created = await _userRepository.AddAsync(user);
+            return _mapper.Map<UserDto>(created);
+        }
+
+        public async Task UpdateUserAsync(int id, UpdateUserDto updateUserDto)
+        {
+            var existingUser = await _userRepository.GetByIdAsync(id);
+            if (existingUser == null)
+                throw new Exception("User not found");
+
+            _mapper.Map(updateUserDto, existingUser);
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
+
+            await _userRepository.UpdateAsync(existingUser);
+        }
+
+        public async Task UpdateUserRoleAsync(int id, UpdateUserRoleDto updateUserRoleDto)
+        {
+            var existingUser = await _userRepository.GetByIdAsync(id);
+            if (existingUser == null)
+                throw new Exception("User not found");
+
+            existingUser.Role = updateUserRoleDto.Role;
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
+
+            await _userRepository.UpdateAsync(existingUser);
+        }
+
+        public async Task SoftDeleteUserAsync(int id)
+        {
+            await _userRepository.SoftDeleteAsync(id);
+        }
+
+        public async Task<bool> EmailExistsAsync(string email)
+        {
+            return await _userRepository.EmailExistsAsync(email);
+        }
+
+        
+        public async Task<UserResponseDto> UpdateAvatarAsync(int userId, string? avatarUrl)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null) throw new Exception("User not found");
+
+            user.AvatarUrl = avatarUrl;
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
+
+            await _userRepository.UpdateAsync(user);
+
+            return _mapper.Map<UserResponseDto>(user);
+        }
+
+        public async Task<UserResponseDto> UpdateUserProfileAsync(int id, UpdateUserProfileDto dto)
+        {
+            // Lấy user từ DB
+            var user = await _userRepository.GetByIdAsync(id);
+            if (user == null || user.IsDeleted)
+                throw new Exception("Không tìm thấy người dùng");
+
+            // Nếu client gửi phone khác, kiểm tra số điện thoại đã được dùng bởi user khác chưa
+            if (!string.IsNullOrEmpty(dto.Phone) && dto.Phone != user.Phone)
+            {
+                var existingWithPhone = await _userRepository.GetByPhoneAsync(dto.Phone);
+                if (existingWithPhone != null && existingWithPhone.Id != id)
+                    throw new Exception("Số điện thoại đã được sử dụng bởi người khác");
+            }
+
+            // Cập nhật thông tin
+            if (!string.IsNullOrWhiteSpace(dto.FirstName))
+                user.FirstName = dto.FirstName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.LastName))
+                user.LastName = dto.LastName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.Phone))
+                user.Phone = dto.Phone.Trim();
+
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
+
+            await _userRepository.UpdateAsync(user);
+
+            return _mapper.Map<UserResponseDto>(user);
+        }
+
+        public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null || user.IsDeleted)
+                throw new Exception("Không tìm thấy người dùng");
+
+            // Kiểm tra mật khẩu hiện tại
+            if (!_authService.VerifyPassword(currentPassword, user.Password))
+            {
+                return false;
+            }
+
+            // Hash mật khẩu mới và lưu
+            user.Password = _authService.HashPassword(newPassword);
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
+
+            await _userRepository.UpdateAsync(user);
+            return true;
+        }
+    }
+}
