@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FootballField.API.Modules.AuthManagement.Dtos;
+using FootballField.API.Shared.Middlewares;
 
 namespace FootballField.API.Modules.AuthManagement.Controllers
 {
@@ -75,7 +76,7 @@ namespace FootballField.API.Modules.AuthManagement.Controllers
         }
 
         [HttpGet("admin-only")]
-        [Authorize(Roles = "Admin")]
+        [HasPermission("user.view_all")]
         public IActionResult AdminOnly()
         {
             return Ok(ApiResponse<string>.Ok("Welcome Admin!", "Access granted"));

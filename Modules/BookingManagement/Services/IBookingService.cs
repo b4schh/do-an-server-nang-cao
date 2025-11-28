@@ -16,5 +16,6 @@ namespace FootballField.API.Modules.BookingManagement.Services
         Task<IEnumerable<BookingDto>> GetBookingsForOwnerAsync(int ownerId, BookingStatus? status = null);
         Task<BookingDto?> GetBookingByIdAsync(int id);
         Task ProcessExpiredBookingsAsync();
+        Task AdminForceCompleteBookingAsync(int bookingId);
     }
 }

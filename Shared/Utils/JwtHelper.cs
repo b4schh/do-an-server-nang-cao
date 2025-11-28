@@ -26,14 +26,22 @@ namespace FootballField.API.Shared.Utils
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
+            // Get role names from UserRoles navigation property
+            var roleNames = user.UserRoles?.Select(ur => ur.Role.Name).ToList() ?? new List<string>();
+            
+            var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Email, user.Email ?? ""),
                 new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName}"),
-                new Claim(ClaimTypes.Role, user.Role.ToString()),
                 new Claim("phone", user.Phone ?? "")
             };
+            
+            // Add all roles as claims
+            foreach (var roleName in roleNames)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, roleName));
+            }
 
             var token = new JwtSecurityToken(
                 issuer: issuer,

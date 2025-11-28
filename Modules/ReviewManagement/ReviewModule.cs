@@ -9,6 +9,7 @@ public static class ReviewModule
     {
         // Register Review Repositories
         services.AddScoped<IReviewRepository, ReviewRepository>();
+        services.AddScoped<IReviewHelpfulVoteRepository, ReviewHelpfulVoteRepository>();
         
         // Register Review Services
         services.AddScoped<IReviewService, ReviewService>();

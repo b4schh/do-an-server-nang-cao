@@ -1,5 +1,6 @@
 using FootballField.API.Shared.Base;
 using FootballField.API.Modules.ReviewManagement.Entities;
+using FootballField.API.Modules.ReviewManagement.Dtos;
 
 namespace FootballField.API.Modules.ReviewManagement.Repositories
 {
@@ -12,5 +13,9 @@ namespace FootballField.API.Modules.ReviewManagement.Repositories
         Task<double> GetAverageRatingByComplexIdAsync(int complexId);
         Task<Review?> GetByBookingIdAsync(int bookingId);
         Task<bool> HasReviewForBookingAsync(int bookingId);
+        Task<(IEnumerable<Review> Reviews, int TotalCount)> GetComplexReviewsWithPaginationAsync(
+            int complexId, int pageIndex, int pageSize);
+        Task<ReviewStatisticsDto> GetReviewStatisticsAsync(int complexId);
+        Task<int> GetCustomerCompletedBookingsCountAsync(int customerId, int complexId);
     }
 }

@@ -11,7 +11,7 @@ namespace FootballField.API.Modules.UserManagement.Dtos
         public string FirstName { get; set; } = null!;
         public string? Email { get; set; }
         public string? Phone { get; set; }
-        public UserRole Role { get; set; }
+        public List<string> RoleNames { get; set; } = new();
         public string? AvatarUrl { get; set; }
         public UserStatus Status { get; set; }
         public bool EmailVerified { get; set; }

@@ -15,8 +15,6 @@ namespace FootballField.API.Modules.UserManagement.Dtos
         public string? Phone { get; set; }
 
         public string? AvatarUrl { get; set; }
-
-        public UserRole Role { get; set; }
         
         public UserStatus Status { get; set; }
     }

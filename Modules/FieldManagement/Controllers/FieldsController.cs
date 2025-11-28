@@ -3,6 +3,7 @@ using FootballField.API.Modules.FieldManagement.Dtos;
 using FootballField.API.Modules.FieldManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using FootballField.API.Shared.Middlewares;
 
 namespace FootballField.API.Modules.FieldManagement.Controllers
 {
@@ -61,7 +62,7 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
 
         // Tạo Field mới
         [HttpPost]
-        [Authorize(Roles = "Admin,Owner")]
+        [HasPermission("field.create")]
         public async Task<IActionResult> Create([FromBody] CreateFieldDto createFieldDto)
         {
             var created = await _fieldService.CreateFieldAsync(createFieldDto);
@@ -71,7 +72,7 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
 
         /// Cập nhật Field
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,Owner")]
+        [HasPermission("field.edit_own")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateFieldDto updateFieldDto)
         {
             var existing = await _fieldService.GetFieldByIdAsync(id);
@@ -85,7 +86,7 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
 
         // Xóa Field
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,Owner")]
+        [HasPermission("field.delete_own")]
         public async Task<IActionResult> Delete(int id)
         {
             var existing = await _fieldService.GetFieldByIdAsync(id);

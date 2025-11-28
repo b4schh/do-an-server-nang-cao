@@ -1,6 +1,14 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0
+
 WORKDIR /src
 ENV TZ=Asia/Ho_Chi_Minh
+
+# Copy csproj and restore first (clean & correct restore)
+COPY *.csproj .
+RUN dotnet restore
+
+# Now copy all source code
 COPY . .
+
 EXPOSE 8080
 CMD ["dotnet", "watch", "run", "--urls=http://0.0.0.0:8080"]

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FootballField.API.Modules.UserManagement.Entities;
 using FootballField.API.Modules.UserManagement.Repositories;
+using FootballField.API.Shared.Middlewares;
 
 namespace FootballField.API.Modules.ComplexManagement.Controllers
 {
@@ -15,12 +16,10 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
     public class ComplexesController : ControllerBase
     {
         private readonly IComplexService _complexService;
-        private readonly IUserRepository _userRepository;
 
-        public ComplexesController(IComplexService complexService, IUserRepository userRepository)
+        public ComplexesController(IComplexService complexService)
         {
             _complexService = complexService;
-            _userRepository = userRepository;
         }
 
         // Lấy tất cả Complexes phân trang
@@ -67,20 +66,65 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
             return Ok(ApiResponse<ComplexFullDetailsDto>.Ok(complex, "Lấy thông tin sân đầy đủ thành công"));
         }
 
+        // Lấy Complex kèm Fields và Timeslots với availability theo từng ngày trong tuần
+        [HttpGet("{id}/weekly-details")]
+        public async Task<IActionResult> GetWeeklyDetails(
+            int id, 
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
+        {
+            // Mặc định lấy 7 ngày từ hôm nay
+            var start = startDate ?? DateTime.Today;
+            var end = endDate ?? DateTime.Today.AddDays(6);
+
+            // Validate date range
+            if (end < start)
+                return BadRequest(ApiResponse<string>.Fail("endDate phải sau startDate", 400));
+
+            if ((end - start).TotalDays > 30)
+                return BadRequest(ApiResponse<string>.Fail("Chỉ cho phép lấy tối đa 30 ngày", 400));
+
+            var complex = await _complexService.GetComplexWeeklyDetailsAsync(id, start, end);
+
+            if (complex == null)
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
+
+            return Ok(ApiResponse<ComplexWeeklyDetailsDto>.Ok(complex, "Lấy thông tin sân theo tuần thành công"));
+        }
+
+        // Lấy availability của complex theo từng ngày
+        [HttpGet("{id}/availability")]
+        public async Task<IActionResult> GetAvailability(
+            int id,
+            [FromQuery] DateOnly? startDate = null,
+            [FromQuery] int days = 7)
+        {
+            // Mặc định lấy từ hôm nay
+            var start = startDate ?? DateOnly.FromDateTime(DateTime.Today);
+
+            // Validate days
+            if (days < 1 || days > 30)
+                return BadRequest(ApiResponse<string>.Fail("days phải trong khoảng 1-30", 400));
+
+            var availability = await _complexService.GetAvailabilityAsync(id, start, days);
+
+            if (availability == null)
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
+
+            return Ok(ApiResponse<AvailabilityDto>.Ok(availability, "Lấy thông tin availability thành công"));
+        }
+
         // Lấy danh sách Complexes của 1 Owner cụ thể
         [HttpGet("admin/owner/{ownerId}")]
-        [Authorize(Roles = "Admin")]
+        [HasPermission("complex.view_all")]
         public async Task<IActionResult> GetComplexesByOwnerIdForAdmin(int ownerId)
         {
             if (ownerId <= 0)
                 return BadRequest(ApiResponse<string>.Fail("Owner ID không hợp lệ", 400));
 
-            var owner = await _userRepository.GetUserByIdWithRoleAsync(ownerId);
-            if (owner == null)
-                return NotFound(ApiResponse<string>.Fail("Không tìm thấy Owner với ID này", 404));
-
-            if (owner.Role != UserRole.Owner && owner.Role != UserRole.Admin)
-                return BadRequest(ApiResponse<string>.Fail("User này không phải là Owner hoặc Admin", 400));
+            var isValidOwner = await _complexService.ValidateOwnerRoleAsync(ownerId);
+            if (!isValidOwner)
+                return BadRequest(ApiResponse<string>.Fail("Không tìm thấy Owner với ID này hoặc user không phải là Owner/Admin", 400));
 
             var complexes = await _complexService.GetComplexesByOwnerIdAsync(ownerId);
             return Ok(ApiResponse<IEnumerable<ComplexDto>>.Ok(complexes, "Lấy danh sách sân thành công"));
@@ -113,7 +157,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
 
         // Lấy danh sách Complexes của mình (Owner chỉ có thể xem Complex của mình)
         [HttpGet("owner/my-complexes")]
-        [Authorize(Roles = "Owner")]
+        [HasPermission("complex.edit_own")]
         public async Task<IActionResult> GetMyComplexes()
         {
             // Lấy userId từ JWT token
@@ -138,7 +182,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
 
         // Tạo Complex mới (cũ)
         [HttpPost]
-        [Authorize(Roles = "Admin,Owner")]
+        [HasPermission("complex.create")]
         [Obsolete("Use POST /api/complexes/owner or POST /api/complexes/admin instead")]
         public async Task<IActionResult> Create([FromBody] CreateComplexDto createComplexDto)
         {
@@ -148,7 +192,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
 
         // Tạo Complex mới (Owner)
         [HttpPost("owner")]
-        [Authorize(Roles = "Owner")]
+        [HasPermission("complex.create")]
         public async Task<IActionResult> CreateByOwner([FromBody] CreateComplexByOwnerDto createComplexDto)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -161,7 +205,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
 
         // Tạo Complex mới (Admin)
         [HttpPost("admin")]
-        [Authorize(Roles = "Admin")]
+        [HasPermission("complex.approve")]
         public async Task<IActionResult> CreateByAdmin([FromBody] CreateComplexByAdminDto createComplexDto)
         {
             try
@@ -177,7 +221,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
 
         // Cập nhật Complex
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,Owner")]
+        [HasPermission("complex.edit_own")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateComplexDto updateComplexDto)
         {
             var existing = await _complexService.GetComplexByIdAsync(id);
@@ -190,7 +234,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
 
         // Xóa Complex
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,Owner")]
+        [HasPermission("complex.delete_own")]
         public async Task<IActionResult> Delete(int id)
         {
             var existing = await _complexService.GetComplexByIdAsync(id);
@@ -203,7 +247,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
 
         // Duyệt Complex
         [HttpPatch("{id}/approve")]
-        [Authorize(Roles = "Admin")]
+        [HasPermission("complex.approve")]
         public async Task<IActionResult> Approve(int id)
         {
             try
@@ -220,7 +264,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
         // Từ chối Complex
         // [Description("")]
         [HttpPatch("{id}/reject")]
-        [Authorize(Roles = "Admin")]
+        [HasPermission("complex.approve")]
         public async Task<IActionResult> Reject(int id)
         {
             try

@@ -15,10 +15,12 @@ namespace FootballField.API.Database
         public MappingProfile()
         {
             // User Mapping
-            CreateMap<User, UserDto>();
-            CreateMap<User, UserProfileDto>();
+            CreateMap<User, UserDto>()
+                .ForMember(dest => dest.RoleNames, opt => opt.MapFrom(src => src.UserRoles.Select(ur => ur.Role.Name).ToList()));
+            CreateMap<User, UserProfileDto>()
+                .ForMember(dest => dest.RoleNames, opt => opt.MapFrom(src => src.UserRoles.Select(ur => ur.Role.Name).ToList()));
             CreateMap<User, UserResponseDto>()
-                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role.ToString()));
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.UserRoles.FirstOrDefault() != null ? src.UserRoles.First().Role.Name : ""));
             CreateMap<CreateUserDto, User>();
             CreateMap<UpdateUserDto, User>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -26,10 +28,20 @@ namespace FootballField.API.Database
                 .ForMember(dest => dest.Password, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
 
+            // Role Mapping
+            CreateMap<Role, RoleDto>()
+                .ForMember(dest => dest.UserCount, opt => opt.Ignore())
+                .ForMember(dest => dest.PermissionCount, opt => opt.Ignore());
+
+            // Permission Mapping
+            CreateMap<Permission, PermissionDto>();
+
             // Complex Mapping
             CreateMap<Complex, ComplexDto>();
             CreateMap<Complex, ComplexWithFieldsDto>();
             CreateMap<Complex, ComplexFullDetailsDto>()
+                .ForMember(dest => dest.Fields, opt => opt.Ignore()); // Ignore vì map thủ công trong Service
+            CreateMap<Complex, ComplexWeeklyDetailsDto>()
                 .ForMember(dest => dest.Fields, opt => opt.Ignore()); // Ignore vì map thủ công trong Service
             CreateMap<CreateComplexDto, Complex>();
             CreateMap<CreateComplexByOwnerDto, Complex>();
@@ -59,9 +71,15 @@ namespace FootballField.API.Database
                 .ForMember(dest => dest.FieldId, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
 
-            // Review Mapping
-            CreateMap<Review, ReviewDto>();
-            CreateMap<CreateReviewDto, Review>();
+            // Review Mapping - Manual mapping in service for complex scenarios
+            CreateMap<Review, ReviewDto>()
+                .ForMember(dest => dest.User, opt => opt.Ignore()) // Map trong service
+                .ForMember(dest => dest.Images, opt => opt.Ignore()) // Map trong service
+                .ForMember(dest => dest.Helpful, opt => opt.MapFrom(src => src.HelpfulVotes.Count));
+
+            CreateMap<CreateReviewDto, Review>()
+                .ForMember(dest => dest.Images, opt => opt.Ignore()); // Handle trong service
+                
             CreateMap<UpdateReviewDto, Review>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.BookingId, opt => opt.Ignore())

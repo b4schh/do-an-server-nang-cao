@@ -4,50 +4,65 @@ using FootballField.API.Modules.BookingManagement.Repositories;
 using FootballField.API.Modules.ReviewManagement.Dtos;
 using FootballField.API.Modules.ReviewManagement.Entities;
 using FootballField.API.Modules.ReviewManagement.Repositories;
+using FootballField.API.Shared.Dtos;
+using FootballField.API.Shared.Storage;
+using System.Security.Claims;
 
 namespace FootballField.API.Modules.ReviewManagement.Services
 {
     public class ReviewService : IReviewService
     {
         private readonly IReviewRepository _reviewRepository;
+        private readonly IReviewHelpfulVoteRepository _voteRepository;
         private readonly IMapper _mapper;
         private readonly IBookingRepository _bookingRepository;
+        private readonly IStorageService _storageService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public ReviewService(IReviewRepository reviewRepository, IMapper mapper, IBookingRepository bookingRepository)
+        public ReviewService(
+            IReviewRepository reviewRepository, 
+            IReviewHelpfulVoteRepository voteRepository,
+            IMapper mapper, 
+            IBookingRepository bookingRepository,
+            IStorageService storageService,
+            IHttpContextAccessor httpContextAccessor)
         {
             _reviewRepository = reviewRepository;
+            _voteRepository = voteRepository;
             _mapper = mapper;
             _bookingRepository = bookingRepository;
+            _storageService = storageService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<IEnumerable<ReviewDto>> GetAllReviewsAsync()
         {
             var reviews = await _reviewRepository.GetAllAsync();
-            return _mapper.Map<IEnumerable<ReviewDto>>(reviews);
+            return reviews.Select(MapToReviewDto).ToList();
         }
 
         public async Task<ReviewDto?> GetReviewByIdAsync(int id)
         {
             var review = await _reviewRepository.GetByIdAsync(id);
-            return review == null ? null : _mapper.Map<ReviewDto>(review);
+            return review == null ? null : MapToReviewDto(review);
         }
 
         public async Task<IEnumerable<ReviewDto>> GetReviewsByFieldIdAsync(int fieldId)
         {
             var reviews = await _reviewRepository.GetByFieldIdAsync(fieldId);
-            return _mapper.Map<IEnumerable<ReviewDto>>(reviews);
+            return reviews.Select(MapToReviewDto).ToList();
         }
 
         public async Task<IEnumerable<ReviewDto>> GetReviewsByComplexIdAsync(int complexId)
         {
             var reviews = await _reviewRepository.GetByComplexIdAsync(complexId);
-            return _mapper.Map<IEnumerable<ReviewDto>>(reviews);
+            return reviews.Select(MapToReviewDto).ToList();
         }
 
         public async Task<IEnumerable<ReviewDto>> GetMyReviewsAsync(int customerId)
         {
             var reviews = await _reviewRepository.GetByCustomerIdAsync(customerId);
-            return _mapper.Map<IEnumerable<ReviewDto>>(reviews);
+            return reviews.Select(MapToReviewDto).ToList();
         }
 
         public async Task<double> GetAverageRatingByFieldIdAsync(int fieldId)
@@ -58,6 +73,73 @@ namespace FootballField.API.Modules.ReviewManagement.Services
         public async Task<double> GetAverageRatingByComplexIdAsync(int complexId)
         {
             return await _reviewRepository.GetAverageRatingByComplexIdAsync(complexId);
+        }
+
+        public async Task<(GetComplexReviewsResponseDto Data, int TotalCount)> GetComplexReviewsWithPaginationAsync(
+            int complexId, int pageIndex, int pageSize)
+        {
+            var (reviews, totalCount) = await _reviewRepository.GetComplexReviewsWithPaginationAsync(
+                complexId, pageIndex, pageSize);
+            
+            var statistics = await _reviewRepository.GetReviewStatisticsAsync(complexId);
+            
+            var reviewDtos = reviews.Select(MapToReviewDto).ToList();
+            
+            var data = new GetComplexReviewsResponseDto
+            {
+                Reviews = reviewDtos,
+                Statistics = statistics
+            };
+
+            return (data, totalCount);
+        }
+
+        private ReviewDto MapToReviewDto(Review review)
+        {
+            var dto = _mapper.Map<ReviewDto>(review);
+            
+            // Map User
+            dto.User = new ReviewUserDto
+            {
+                Id = review.Booking.Customer.Id,
+                Name = $"{review.Booking.Customer.LastName} {review.Booking.Customer.FirstName}",
+                Avatar = review.Booking.Customer.AvatarUrl != null 
+                    ? _storageService.GetFullUrl(review.Booking.Customer.AvatarUrl) 
+                    : null,
+                Role = DetermineCustomerRole(review.Booking.CustomerId, review.Booking.Field.ComplexId).Result
+            };
+            
+            // Map Images
+            dto.Images = review.Images
+                .Select(img => _storageService.GetFullUrl(img.ImageUrl))
+                .ToList();
+            
+            // Check if current user has voted
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId.HasValue)
+            {
+                dto.IsVotedByCurrentUser = _voteRepository.HasVotedAsync(review.Id, currentUserId.Value).Result;
+            }
+            
+            return dto;
+        }
+        
+        private int? GetCurrentUserId()
+        {
+            var userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
+            {
+                return userId;
+            }
+            return null;
+        }
+
+        private async Task<string> DetermineCustomerRole(int customerId, int complexId)
+        {
+            var completedBookingsCount = await _reviewRepository
+                .GetCustomerCompletedBookingsCountAsync(customerId, complexId);
+            
+            return completedBookingsCount >= 3 ? "Khách hàng thường xuyên" : "Khách hàng mới";
         }
 
         public async Task<ReviewDto> CreateReviewAsync(int customerId, CreateReviewDto createReviewDto)
@@ -87,16 +169,44 @@ namespace FootballField.API.Modules.ReviewManagement.Services
                 throw new Exception("Bạn đã đánh giá booking này rồi");
             }
 
-            // 5. Tạo review (không cần set CustomerId, FieldId, ComplexId nữa - lấy từ Booking)
+            // 5. Tạo review
             var review = _mapper.Map<Review>(createReviewDto);
             review.CreatedAt = DateTime.UtcNow.AddHours(7);
             review.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             var created = await _reviewRepository.AddAsync(review);
+
+            // 6. Upload images nếu có
+            if (createReviewDto.Images != null && createReviewDto.Images.Any())
+            {
+                foreach (var imageFile in createReviewDto.Images)
+                {
+                    if (imageFile.Length > 0)
+                    {
+                        var fileName = $"reviews/{created.Id}/{Guid.NewGuid()}{Path.GetExtension(imageFile.FileName)}";
+                        using var stream = imageFile.OpenReadStream();
+                        var relativePath = await _storageService.UploadAsync(
+                            stream, 
+                            fileName, 
+                            imageFile.ContentType);
+
+                        var reviewImage = new ReviewImage
+                        {
+                            ReviewId = created.Id,
+                            ImageUrl = relativePath,
+                            CreatedAt = DateTime.UtcNow.AddHours(7)
+                        };
+                        
+                        created.Images.Add(reviewImage);
+                    }
+                }
+                
+                await _reviewRepository.UpdateAsync(created);
+            }
             
             // Load navigation properties for mapping
             var reviewWithDetails = await _reviewRepository.GetByIdAsync(created.Id);
-            return _mapper.Map<ReviewDto>(reviewWithDetails);
+            return MapToReviewDto(reviewWithDetails!);
         }
 
         public async Task UpdateReviewAsync(int id, int customerId, UpdateReviewDto updateReviewDto)
@@ -159,6 +269,38 @@ namespace FootballField.API.Modules.ReviewManagement.Services
             existingReview.UpdatedAt = DateTime.UtcNow.AddHours(7);
 
             await _reviewRepository.UpdateAsync(existingReview);
+        }
+
+        public async Task<bool> VoteHelpfulAsync(int reviewId, int userId)
+        {
+            // Kiểm tra review tồn tại
+            var review = await _reviewRepository.GetByIdAsync(reviewId);
+            if (review == null || review.IsDeleted || !review.IsVisible)
+                throw new Exception("Không tìm thấy đánh giá");
+
+            // Kiểm tra đã vote chưa
+            if (await _voteRepository.HasVotedAsync(reviewId, userId))
+                return false; // Đã vote rồi
+
+            var vote = new ReviewHelpfulVote
+            {
+                ReviewId = reviewId,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow.AddHours(7)
+            };
+
+            await _voteRepository.AddAsync(vote);
+            return true;
+        }
+
+        public async Task<bool> UnvoteHelpfulAsync(int reviewId, int userId)
+        {
+            var vote = await _voteRepository.GetVoteAsync(reviewId, userId);
+            if (vote == null)
+                return false; // Chưa vote
+
+            await _voteRepository.DeleteAsync(vote);
+            return true;
         }
     }
 }

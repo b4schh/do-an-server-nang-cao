@@ -42,7 +42,7 @@ namespace FootballField.API.Modules.BookingManagement.Services
             _notificationService = notificationService;
         }
 
-      public async Task<BookingDto> CreateBookingAsync(int customerId, CreateBookingDto dto)
+        public async Task<BookingDto> CreateBookingAsync(int customerId, CreateBookingDto dto)
         {
             var vietnamNow = TimeZoneHelper.VietnamNow;
 
@@ -140,7 +140,7 @@ namespace FootballField.API.Modules.BookingManagement.Services
 
             // Upload image to MinIO
             var fileName = $"booking_{bookingId}_{Guid.NewGuid()}{Path.GetExtension(dto.PaymentProofImage.FileName)}";
-            
+
             using var stream = dto.PaymentProofImage.OpenReadStream();
             var imageUrl = await _storageService.UploadAsync(stream, fileName, dto.PaymentProofImage.ContentType);
 
@@ -300,7 +300,7 @@ namespace FootballField.API.Modules.BookingManagement.Services
             }
 
             // Check status - can only cancel Pending, WaitingForApproval, or Confirmed
-            if (booking.BookingStatus != BookingStatus.Pending 
+            if (booking.BookingStatus != BookingStatus.Pending
                 && booking.BookingStatus != BookingStatus.WaitingForApproval
                 && booking.BookingStatus != BookingStatus.Confirmed)
             {
@@ -538,13 +538,13 @@ namespace FootballField.API.Modules.BookingManagement.Services
                 BookingStatus = booking.BookingStatus,
                 BookingStatusText = GetBookingStatusText(booking.BookingStatus),
                 ApprovedBy = booking.ApprovedBy,
-                ApprovedByName = booking.ApprovedByUser != null 
-                    ? $"{booking.ApprovedByUser.LastName} {booking.ApprovedByUser.FirstName}" 
+                ApprovedByName = booking.ApprovedByUser != null
+                    ? $"{booking.ApprovedByUser.LastName} {booking.ApprovedByUser.FirstName}"
                     : null,
                 ApprovedAt = booking.ApprovedAt,
                 CancelledBy = booking.CancelledBy,
-                CancelledByName = booking.CancelledByUser != null 
-                    ? $"{booking.CancelledByUser.LastName} {booking.CancelledByUser.FirstName}" 
+                CancelledByName = booking.CancelledByUser != null
+                    ? $"{booking.CancelledByUser.LastName} {booking.CancelledByUser.FirstName}"
                     : null,
                 CancelledAt = booking.CancelledAt,
                 CreatedAt = booking.CreatedAt,
@@ -566,6 +566,19 @@ namespace FootballField.API.Modules.BookingManagement.Services
                 BookingStatus.NoShow => "Không đến",
                 _ => "Không xác định"
             };
+        }
+
+        public async Task AdminForceCompleteBookingAsync(int bookingId)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+            if (booking == null)
+                throw new Exception("Không tìm thấy booking");
+
+            // Force update to Completed for testing purposes
+            booking.BookingStatus = BookingStatus.Completed;
+            booking.UpdatedAt = DateTime.UtcNow.AddHours(7);
+
+            await _bookingRepository.UpdateAsync(booking);
         }
     }
 }

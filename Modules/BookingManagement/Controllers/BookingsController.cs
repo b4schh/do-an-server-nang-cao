@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FootballField.API.Shared.Dtos.BookingManagement;
 using FootballField.API.Modules.BookingManagement.Entities;
+using FootballField.API.Shared.Middlewares;
 
 namespace FootballField.API.Modules.BookingManagement.Controllers
 {
@@ -33,7 +34,7 @@ namespace FootballField.API.Modules.BookingManagement.Controllers
 
         // POST api/bookings - Khách tạo booking (Bước 1)
         [HttpPost]
-        [Authorize(Roles = "Customer")]
+        [HasPermission("booking.create")]
         public async Task<IActionResult> CreateBooking([FromBody] CreateBookingDto dto)
         {
             try
@@ -54,7 +55,7 @@ namespace FootballField.API.Modules.BookingManagement.Controllers
 
         // POST api/bookings/{id}/upload-payment - Khách upload bill (Bước 2)
         [HttpPost("{id}/upload-payment")]
-        [Authorize(Roles = "Customer")]
+        [HasPermission("booking.upload_payment")]
         public async Task<IActionResult> UploadPaymentProof(int id, [FromForm] UploadPaymentProofDto dto)
         {
             try
@@ -75,7 +76,7 @@ namespace FootballField.API.Modules.BookingManagement.Controllers
 
         // POST api/bookings/{id}/approve - Chủ sân duyệt (Bước 3)
         [HttpPost("{id}/approve")]
-        [Authorize(Roles = "Owner")]
+        [HasPermission("booking.approve")]
         public async Task<IActionResult> ApproveBooking(int id)
         {
             try
@@ -96,7 +97,7 @@ namespace FootballField.API.Modules.BookingManagement.Controllers
 
         // POST api/bookings/{id}/reject - Chủ sân từ chối
         [HttpPost("{id}/reject")]
-        [Authorize(Roles = "Owner")]
+        [HasPermission("booking.reject")]
         public async Task<IActionResult> RejectBooking(int id, [FromBody] RejectBookingDto dto)
         {
             try
@@ -137,7 +138,7 @@ namespace FootballField.API.Modules.BookingManagement.Controllers
 
         // POST api/bookings/{id}/complete - Chủ sân đánh dấu hoàn thành
         [HttpPost("{id}/complete")]
-        [Authorize(Roles = "Owner")]
+        [HasPermission("booking.mark_complete")]
         public async Task<IActionResult> MarkCompleted(int id)
         {
             try
@@ -158,7 +159,7 @@ namespace FootballField.API.Modules.BookingManagement.Controllers
 
         // POST api/bookings/{id}/no-show - Chủ sân đánh dấu khách không đến
         [HttpPost("{id}/no-show")]
-        [Authorize(Roles = "Owner")]
+        [HasPermission("booking.mark_no_show")]
         public async Task<IActionResult> MarkNoShow(int id)
         {
             try
@@ -179,7 +180,7 @@ namespace FootballField.API.Modules.BookingManagement.Controllers
 
         // GET api/bookings/my-bookings - Khách xem booking của mình
         [HttpGet("my-bookings")]
-        [Authorize(Roles = "Customer")]
+        [HasPermission("booking.view_own")]
         public async Task<IActionResult> GetMyBookings([FromQuery] BookingStatus? status = null)
         {
             var customerId = GetCurrentUserId();
@@ -189,7 +190,7 @@ namespace FootballField.API.Modules.BookingManagement.Controllers
 
         // GET api/bookings/owner-bookings - Chủ sân xem booking của mình
         [HttpGet("owner-bookings")]
-        [Authorize(Roles = "Owner")]
+        [HasPermission("booking.view_own_complex")]
         public async Task<IActionResult> GetOwnerBookings([FromQuery] BookingStatus? status = null)
         {
             var ownerId = GetCurrentUserId();

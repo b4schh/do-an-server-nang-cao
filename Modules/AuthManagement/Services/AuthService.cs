@@ -14,7 +14,11 @@ namespace FootballField.API.Modules.AuthManagement.Services
         private readonly IConfiguration _configuration;
         private readonly IMapper _mapper;
 
-        public AuthService(IUserRepository userRepository, JwtHelper jwtHelper, IConfiguration configuration, IMapper mapper)
+        public AuthService(
+            IUserRepository userRepository, 
+            JwtHelper jwtHelper, 
+            IConfiguration configuration, 
+            IMapper mapper)
         {
             _userRepository = userRepository;
             _jwtHelper = jwtHelper;
@@ -41,13 +45,24 @@ namespace FootballField.API.Modules.AuthManagement.Services
                 Email = request.Email,
                 Phone = request.Phone,
                 Password = HashPassword(request.Password),
-                Role = UserRole.Customer,
                 Status = UserStatus.Active
                 // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
             };
 
             // Lưu user vào database
             await _userRepository.AddAsync(user);
+            
+            // Assign Customer role via USER_ROLE table
+            var customerRole = await _userRepository.GetRoleByNameAsync("Customer");
+            if (customerRole != null)
+            {
+                await _userRepository.AddUserRoleAsync(user.Id, customerRole.Id);
+            }
+
+            // Reload user with UserRoles for JWT token generation
+            user = await _userRepository.GetByIdWithRolesAsync(user.Id);
+            if (user == null)
+                throw new InvalidOperationException("Failed to reload user after registration");
 
             // Generate JWT token
             var token = _jwtHelper.GenerateToken(user);
@@ -64,7 +79,7 @@ namespace FootballField.API.Modules.AuthManagement.Services
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
         {
-            // Tìm user theo email
+            // Tìm user theo email với UserRoles
             var user = await _userRepository.GetByEmailAsync(request.Email);
             if (user == null || user.IsDeleted || user.Status != UserStatus.Active)
                 return null;
@@ -72,8 +87,11 @@ namespace FootballField.API.Modules.AuthManagement.Services
             // Validate password với BCrypt
             if (!await ValidatePasswordAsync(request.Password, user.Password ?? ""))
                 return null;
-
             
+            // Reload user with UserRoles for JWT token generation
+            user = await _userRepository.GetByIdWithRolesAsync(user.Id);
+            if (user == null)
+                return null;
            
             await _userRepository.UpdateAsync(user);
 
@@ -92,7 +110,7 @@ namespace FootballField.API.Modules.AuthManagement.Services
 
         public async Task<UserDto?> GetCurrentUserAsync(int userId)
         {
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _userRepository.GetByIdWithRolesAsync(userId);
             return user == null ? null : _mapper.Map<UserDto>(user);
         }
 

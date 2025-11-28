@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace FootballField.API.Modules.ReviewManagement.Dtos
 {
@@ -13,5 +14,7 @@ namespace FootballField.API.Modules.ReviewManagement.Dtos
 
         [MaxLength(1000, ErrorMessage = "Bình luận không được quá 1000 ký tự")]
         public string? Comment { get; set; }
+
+        public List<IFormFile>? Images { get; set; }
     }
 }

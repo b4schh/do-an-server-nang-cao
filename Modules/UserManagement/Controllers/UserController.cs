@@ -5,6 +5,7 @@ using System.Security.Claims;
 using FootballField.API.Shared.Storage;
 using FootballField.API.Modules.UserManagement.Services;
 using FootballField.API.Modules.UserManagement.Dtos;
+using FootballField.API.Shared.Middlewares;
 
 namespace FootballField.API.Modules.UserManagement.Controllers
 {
@@ -22,8 +23,9 @@ namespace FootballField.API.Modules.UserManagement.Controllers
             _storageService = storageService;
         }
 
-        /// Lấy danh sách người dùng với phân trang
+        /// Lấy danh sách người dùng với phân trang (chỉ Admin)
         [HttpGet]
+        [HasPermission("user.view_all")]
         public async Task<IActionResult> GetAll([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
             var (users, totalCount) = await _userService.GetPagedUsersAsync(pageIndex, pageSize);
@@ -31,8 +33,22 @@ namespace FootballField.API.Modules.UserManagement.Controllers
             return Ok(response);
         }
 
-        /// Lấy thông tin người dùng theo ID
+        /// Lấy thông tin của chính mình
+        [HttpGet("me")]
+        [HasPermission("user.view_own_profile")]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            var userId = GetCurrentUserId();
+            var user = await _userService.GetUserByIdAsync(userId);
+            if (user == null)
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
+
+            return Ok(ApiResponse<UserDto>.Ok(user, "Lấy thông tin thành công"));
+        }
+
+        /// Lấy thông tin công khai của người dùng theo ID (không cần authentication)
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetById(int id)
         {
             var user = await _userService.GetUserByIdAsync(id);
@@ -42,8 +58,9 @@ namespace FootballField.API.Modules.UserManagement.Controllers
             return Ok(ApiResponse<UserDto>.Ok(user, "Lấy thông tin người dùng thành công"));
         }
 
-        /// Tạo người dùng mới
+        /// Tạo người dùng mới (chỉ Admin)
         [HttpPost]
+        [HasPermission("user.create")]
         public async Task<IActionResult> Create([FromBody] CreateUserDto createUserDto)
         {
             if (await _userService.EmailExistsAsync(createUserDto.Email))
@@ -53,8 +70,9 @@ namespace FootballField.API.Modules.UserManagement.Controllers
             return Ok(ApiResponse<UserDto>.Ok(created, "Tạo người dùng thành công", 201));
         }
 
-        /// Cập nhật thông tin người dùng
+        /// Cập nhật thông tin người dùng (chỉ Admin)
         [HttpPut("{id}")]
+        [HasPermission("user.update_any")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateUserDto updateUserDto)
         {
             var existing = await _userService.GetUserByIdAsync(id);
@@ -67,7 +85,7 @@ namespace FootballField.API.Modules.UserManagement.Controllers
 
         // Cập nhật role của User
         [HttpPatch("{id}/role")]
-        [Authorize(Roles = "Admin")]
+        [HasPermission("user.change_role")]
         public async Task<IActionResult> UpdateRole(int id, [FromBody] UpdateUserRoleDto updateUserRoleDto)
         {
             var existing = await _userService.GetUserByIdAsync(id);
@@ -78,8 +96,9 @@ namespace FootballField.API.Modules.UserManagement.Controllers
             return Ok(ApiResponse<string>.Ok("", "Cập nhật role người dùng thành công"));
         }
 
-        /// Xóa người dùng (soft delete)
+        /// Xóa người dùng (soft delete) (chỉ Admin)
         [HttpDelete("{id}")]
+        [HasPermission("user.delete_any")]
         public async Task<IActionResult> Delete(int id)
         {
             var existing = await _userService.GetUserByIdAsync(id);
@@ -90,9 +109,39 @@ namespace FootballField.API.Modules.UserManagement.Controllers
             return Ok(ApiResponse<string>.Ok("", "Xóa người dùng thành công"));
         }
 
-        [HttpPost("{id:int}/upload-avatar")]
+        /// Cập nhật trạng thái người dùng (Ban/Unban) (chễ Admin)
+        [HttpPatch("{id}/status")]
+        [HasPermission("user.ban")]
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateUserStatusDto dto)
+        {
+            try
+            {
+                var existing = await _userService.GetUserByIdAsync(id);
+                if (existing == null)
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
+
+                await _userService.UpdateUserStatusAsync(id, dto.Status);
+                return Ok(ApiResponse<string>.Ok("", "Cập nhật trạng thái người dùng thành công"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<string>.Fail(ex.Message, 400));
+            }
+        }
+
+        /// Lấy thống kê người dùng theo role (chỉ Admin)
+        [HttpGet("statistics")]
+        [HasPermission("user.view_all")]
+        public async Task<IActionResult> GetStatistics()
+        {
+            var stats = await _userService.GetUserStatisticsByRoleAsync();
+            return Ok(ApiResponse<Dictionary<string, int>>.Ok(stats, "Lấy thống kê thành công"));
+        }
+
+        /// Upload avatar cho chính mình
+        [HttpPost("me/avatar")]
         [Authorize]
-        public async Task<IActionResult> UploadAvatar(int id, IFormFile file)
+        public async Task<IActionResult> UploadAvatar(IFormFile file)
         {
             try
             {
@@ -117,12 +166,8 @@ namespace FootballField.API.Modules.UserManagement.Controllers
 
                 // Get current user ID from JWT
                 var userId = GetCurrentUserId();
-                if (userId != id)
-                {
-                    return StatusCode(403, ApiResponse<string>.Fail("Bạn chỉ có thể upload avatar cho chính mình", 403));
-                }
 
-                var currentUser = await _userService.GetUserByIdAsync(id);
+                var currentUser = await _userService.GetUserByIdAsync(userId);
                 if (currentUser == null)
                 {
                     return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
@@ -134,10 +179,10 @@ namespace FootballField.API.Modules.UserManagement.Controllers
                     await DeleteOldAvatar(currentUser.AvatarUrl);
                 }
 
-                // Generate unique filename with avatars/ prefix
+                // Generate unique filename with user-avatars/ prefix
                 var fileExtension = Path.GetExtension(file.FileName ?? "file.jpg");
-                var fileName = $"avatar-{id}-{Guid.NewGuid()}{fileExtension}";
-                var objectName = $"avatars/{fileName}";
+                var fileName = $"avatar-{userId}-{Guid.NewGuid()}{fileExtension}";
+                var objectName = $"user-avatars/{fileName}";
 
                 // Upload to MinIO
                 string avatarRelativePath;
@@ -147,7 +192,7 @@ namespace FootballField.API.Modules.UserManagement.Controllers
                 }
 
                 // Update user avatar URL in database (save relative path)
-                var result = await _userService.UpdateAvatarAsync(id, avatarRelativePath);
+                var result = await _userService.UpdateAvatarAsync(userId, avatarRelativePath);
 
                 return Ok(ApiResponse<UserResponseDto>.Ok(result, "Upload avatar thành công"));
             }
@@ -161,19 +206,16 @@ namespace FootballField.API.Modules.UserManagement.Controllers
             }
         }
 
-        [HttpDelete("{id:int}/avatar")]
+        /// Xóa avatar của chính mình
+        [HttpDelete("me/avatar")]
         [Authorize]
-        public async Task<IActionResult> DeleteAvatar(int id)
+        public async Task<IActionResult> DeleteAvatar()
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId != id)
-                {
-                    return StatusCode(403, ApiResponse<string>.Fail("Bạn chỉ có thể xóa avatar của chính mình", 403));
-                }
 
-                var currentUser = await _userService.GetUserByIdAsync(id);
+                var currentUser = await _userService.GetUserByIdAsync(userId);
                 if (currentUser == null)
                 {
                     return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
@@ -186,7 +228,7 @@ namespace FootballField.API.Modules.UserManagement.Controllers
                 }
 
                 // Remove avatar URL from database
-                var result = await _userService.UpdateAvatarAsync(id, null);
+                var result = await _userService.UpdateAvatarAsync(userId, null);
 
                 return Ok(ApiResponse<UserResponseDto>.Ok(result, "Xóa avatar thành công"));
             }
@@ -197,19 +239,15 @@ namespace FootballField.API.Modules.UserManagement.Controllers
         }
 
 
-        [HttpPatch("{id:int}/profile")]
+        /// Cập nhật thông tin profile của chính mình
+        [HttpPatch("me/profile")]
         [Authorize]
-        public async Task<IActionResult> UpdateProfile(int id, [FromBody] UpdateUserProfileDto dto)
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateUserProfileDto dto)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId != id)
-                {
-                    return StatusCode(403, ApiResponse<string>.Fail("Bạn chỉ có thể cập nhật thông tin của chính mình", 403));
-                }
-
-                var updated = await _userService.UpdateUserProfileAsync(id, dto);
+                var updated = await _userService.UpdateUserProfileAsync(userId, dto);
                 return Ok(ApiResponse<UserResponseDto>.Ok(updated, "Cập nhật thông tin thành công"));
             }
             catch (Exception ex)
@@ -219,19 +257,15 @@ namespace FootballField.API.Modules.UserManagement.Controllers
         }
 
 
-        [HttpPost("{id:int}/change-password")]
+        /// Đổi mật khẩu của chính mình
+        [HttpPost("me/change-password")]
         [Authorize]
-        public async Task<IActionResult> ChangePassword(int id, [FromBody] ChangePasswordDto dto)
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId != id)
-                {
-                    return StatusCode(403, ApiResponse<string>.Fail("Bạn chỉ có thể đổi mật khẩu của chính mình", 403));
-                }
-
-                var result = await _userService.ChangePasswordAsync(id, dto.CurrentPassword, dto.NewPassword);
+                var result = await _userService.ChangePasswordAsync(userId, dto.CurrentPassword, dto.NewPassword);
 
                 if (result)
                 {

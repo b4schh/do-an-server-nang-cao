@@ -3,6 +3,7 @@ using FootballField.API.Modules.FieldManagement.Dtos;
 using FootballField.API.Modules.FieldManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using FootballField.API.Shared.Middlewares;
 
 namespace FootballField.API.Modules.FieldManagement.Controllers
 {
@@ -46,7 +47,7 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
 
         // Tạo TimeSlot mới
         [HttpPost]
-        [Authorize(Roles = "Admin,Owner")]
+        [HasPermission("timeslot.create")]
         public async Task<IActionResult> Create([FromBody] CreateTimeSlotDto createTimeSlotDto)
         {
             var result = await _timeSlotService.CreateTimeSlotAsync(createTimeSlotDto);
@@ -66,7 +67,7 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
 
         // Cập nhật TimeSlot
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,Owner")]
+        [HasPermission("timeslot.edit_own")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateTimeSlotDto updateTimeSlotDto)
         {
             var result = await _timeSlotService.UpdateTimeSlotAsync(id, updateTimeSlotDto);
@@ -79,7 +80,7 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
 
         // Xóa TimeSlot
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,Owner")]
+        [HasPermission("timeslot.delete_own")]
         public async Task<IActionResult> Delete(int id)
         {
             var existing = await _timeSlotService.GetTimeSlotByIdAsync(id);

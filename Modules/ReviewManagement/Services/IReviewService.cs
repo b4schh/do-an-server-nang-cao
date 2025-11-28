@@ -16,5 +16,11 @@ namespace FootballField.API.Modules.ReviewManagement.Services
         Task DeleteReviewAsync(int id, int customerId);
         Task AdminDeleteReviewAsync(int id);
         Task AdminToggleVisibilityAsync(int id, bool isVisible);
+        
+        // New methods
+        Task<(GetComplexReviewsResponseDto Data, int TotalCount)> GetComplexReviewsWithPaginationAsync(
+            int complexId, int pageIndex, int pageSize);
+        Task<bool> VoteHelpfulAsync(int reviewId, int userId);
+        Task<bool> UnvoteHelpfulAsync(int reviewId, int userId);
     }
 }

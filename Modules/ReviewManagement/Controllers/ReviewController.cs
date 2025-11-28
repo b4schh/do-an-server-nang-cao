@@ -4,6 +4,7 @@ using FootballField.API.Shared.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using FootballField.API.Shared.Middlewares;
 
 namespace FootballField.API.Modules.ReviewManagement.Controllers
 {
@@ -22,7 +23,7 @@ namespace FootballField.API.Modules.ReviewManagement.Controllers
         /// [PUBLIC] Lấy tất cả review (admin only - có thể thấy review ẩn)
         /// </summary>
         [HttpGet]
-        [Authorize(Roles = "Admin")]
+        [HasPermission("review.moderate")]
         public async Task<IActionResult> GetAll()
         {
             try
@@ -153,7 +154,7 @@ namespace FootballField.API.Modules.ReviewManagement.Controllers
         /// </summary>
         [HttpPost]
         [Authorize]
-        public async Task<IActionResult> Create([FromBody] CreateReviewDto createReviewDto)
+        public async Task<IActionResult> Create([FromForm] CreateReviewDto createReviewDto)
         {
             try
             {
@@ -204,9 +205,7 @@ namespace FootballField.API.Modules.ReviewManagement.Controllers
             }
         }
 
-        /// <summary>
-        /// [USER] Xóa review của mình
-        /// </summary>
+        /// Xóa review của mình
         [HttpDelete("{id}")]
         [Authorize]
         public async Task<IActionResult> Delete(int id)
@@ -232,11 +231,9 @@ namespace FootballField.API.Modules.ReviewManagement.Controllers
             }
         }
 
-        /// <summary>
-        /// [ADMIN] Xóa bất kỳ review nào
-        /// </summary>
+        /// Xóa bất kỳ review nào
         [HttpDelete("admin/{id}")]
-        [Authorize(Roles = "Admin")]
+        [HasPermission("review.delete_any")]
         public async Task<IActionResult> AdminDelete(int id)
         {
             try
@@ -250,11 +247,9 @@ namespace FootballField.API.Modules.ReviewManagement.Controllers
             }
         }
 
-        /// <summary>
-        /// [ADMIN] Ẩn/Hiện review
-        /// </summary>
+        /// Ẩn/Hiện review
         [HttpPatch("admin/{id}/visibility")]
-        [Authorize(Roles = "Admin")]
+        [HasPermission("review.moderate")]
         public async Task<IActionResult> AdminToggleVisibility(int id, [FromBody] bool isVisible)
         {
             try
@@ -262,6 +257,108 @@ namespace FootballField.API.Modules.ReviewManagement.Controllers
                 await _reviewService.AdminToggleVisibilityAsync(id, isVisible);
                 var message = isVisible ? "Hiển thị đánh giá thành công" : "Ẩn đánh giá thành công";
                 return Ok(ApiResponse<string>.Ok(null, message));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<string>.Fail(ex.Message, 400));
+            }
+        }
+
+        /// Lấy danh sách review của complex với pagination và statistics
+        [HttpGet("complex/{complexId}/paginated")]
+        public async Task<IActionResult> GetComplexReviewsPaginated(
+            int complexId,
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var (data, totalCount) = await _reviewService.GetComplexReviewsWithPaginationAsync(
+                    complexId, pageIndex, pageSize);
+                
+                // Wrap in custom response structure as per requirement
+                var response = new
+                {
+                    success = true,
+                    message = "Lấy đánh giá thành công",
+                    statusCode = 200,
+                    data = new
+                    {
+                        reviews = data.Reviews,
+                        statistics = data.Statistics
+                    },
+                    pagination = new
+                    {
+                        pageIndex,
+                        pageSize,
+                        totalRecords = totalCount,
+                        totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                        hasPreviousPage = pageIndex > 1,
+                        hasNextPage = pageIndex < (int)Math.Ceiling((double)totalCount / pageSize)
+                    }
+                };
+                
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse<string>.Fail($"Lỗi: {ex.Message}", 500));
+            }
+        }
+
+        /// Vote review là hữu ích
+        [HttpPost("{reviewId}/vote-helpful")]
+        [Authorize]
+        public async Task<IActionResult> VoteHelpful(int reviewId)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                {
+                    return Unauthorized(ApiResponse<string>.Fail("Không thể xác thực người dùng", 401));
+                }
+
+                var success = await _reviewService.VoteHelpfulAsync(reviewId, userId);
+                if (success)
+                {
+                    return Ok(ApiResponse<string>.Ok(null, "Đã vote review hữu ích"));
+                }
+                else
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Bạn đã vote review này rồi", 400));
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<string>.Fail(ex.Message, 400));
+            }
+        }
+
+        /// <summary>
+        /// [USER] Hủy vote review hữu ích
+        /// </summary>
+        [HttpDelete("{reviewId}/vote-helpful")]
+        [Authorize]
+        public async Task<IActionResult> UnvoteHelpful(int reviewId)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                {
+                    return Unauthorized(ApiResponse<string>.Fail("Không thể xác thực người dùng", 401));
+                }
+
+                var success = await _reviewService.UnvoteHelpfulAsync(reviewId, userId);
+                if (success)
+                {
+                    return Ok(ApiResponse<string>.Ok(null, "Đã hủy vote review hữu ích"));
+                }
+                else
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Bạn chưa vote review này", 400));
+                }
             }
             catch (Exception ex)
             {

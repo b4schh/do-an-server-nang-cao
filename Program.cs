@@ -63,6 +63,7 @@ builder.Services.AddOwnerSettingsModule();
 
 // ========== ĐĂNG KÝ UTILITIES ==========
 builder.Services.AddScoped<JwtHelper>();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddSingleton(vietnamTimeZone);
 

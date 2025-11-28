@@ -5,6 +5,7 @@ using System.Security.Claims;
 using FootballField.API.Modules.ComplexManagement.Services;
 using FootballField.API.Shared.Storage;
 using FootballField.API.Modules.ComplexManagement.Dtos;
+using FootballField.API.Shared.Middlewares;
 
 namespace FootballField.API.Modules.ComplexManagement.Controllers
 {
@@ -27,7 +28,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
         }
 
         [HttpPost("{complexId:int}/upload")]
-        [Authorize(Roles = "Admin,Owner")]
+        [HasPermission("complex.upload_images")]
         public async Task<IActionResult> UploadComplexImage(int complexId, IFormFile file, string? description = null)
         {
             try
@@ -115,7 +116,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
         }
 
         [HttpDelete("{imageId:int}")]
-        [Authorize(Roles = "Admin,Owner")]
+        [HasPermission("complex.upload_images")]
         public async Task<IActionResult> DeleteComplexImage(int imageId)
         {
             try
@@ -131,8 +132,8 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
                 // Delete from MinIO - parse object name từ relative path
                 if (!string.IsNullOrEmpty(image.ImageUrl))
                 {
-                    // ImageUrl giờ là: /football-field-images/complexes/complex-1-xxx.webp
-                    var bucketName = "football-field-images";
+                    // ImageUrl giờ là: /football-field-booking-media/complexes/complex-1-xxx.webp
+                    var bucketName = "football-field-booking-media";
                     var relativePath = image.ImageUrl.TrimStart('/');
                     
                     if (relativePath.StartsWith(bucketName + "/"))

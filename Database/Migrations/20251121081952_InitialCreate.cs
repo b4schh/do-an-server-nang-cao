@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FootballField.API.Migrations
+namespace FootballField.API.Database.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -358,10 +358,8 @@ namespace FootballField.API.Migrations
                     id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     booking_id = table.Column<int>(type: "int", nullable: false),
-                    customer_id = table.Column<int>(type: "int", nullable: false),
-                    complex_id = table.Column<int>(type: "int", nullable: false),
                     rating = table.Column<byte>(type: "tinyint", nullable: false),
-                    comment = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    comment = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     is_visible = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
@@ -378,16 +376,6 @@ namespace FootballField.API.Migrations
                         principalTable: "BOOKING",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_REVIEW_COMPLEX_complex_id",
-                        column: x => x.complex_id,
-                        principalTable: "COMPLEX",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "FK_REVIEW_USER_customer_id",
-                        column: x => x.customer_id,
-                        principalTable: "USER",
-                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateIndex(
@@ -473,16 +461,6 @@ namespace FootballField.API.Migrations
                 name: "IX_REVIEW_booking_id",
                 table: "REVIEW",
                 column: "booking_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Review_ComplexId",
-                table: "REVIEW",
-                column: "complex_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_REVIEW_customer_id",
-                table: "REVIEW",
-                column: "customer_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_SYSTEM_CONFIG_config_key",

@@ -37,6 +37,45 @@ namespace FootballField.API.Modules.BookingManagement.Repositories
             return bookedSlots.Select(b => (b.FieldId, b.TimeSlotId)).ToHashSet();
         }
 
+        public async Task<Dictionary<string, HashSet<(int FieldId, int TimeSlotId)>>> GetBookedTimeSlotIdsForDateRangeAsync(int complexId, DateTime startDate, DateTime endDate)
+        {
+            // Lấy tất cả bookings trong khoảng thời gian
+            var bookedSlots = await _dbSet
+                .Where(b => b.Field.ComplexId == complexId 
+                            && b.BookingDate.Date >= startDate.Date
+                            && b.BookingDate.Date <= endDate.Date
+                            && b.BookingStatus != BookingStatus.Cancelled
+                            && b.BookingStatus != BookingStatus.Rejected
+                            && b.BookingStatus != BookingStatus.Expired)
+                .Select(b => new { 
+                    Date = b.BookingDate.Date,
+                    FieldId = b.FieldId, 
+                    TimeSlotId = b.TimeSlotId 
+                })
+                .ToListAsync();
+
+            // Group theo date và tạo dictionary
+            var result = new Dictionary<string, HashSet<(int FieldId, int TimeSlotId)>>();
+            
+            // Initialize tất cả các ngày trong range
+            for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+            {
+                result[date.ToString("yyyy-MM-dd")] = new HashSet<(int FieldId, int TimeSlotId)>();
+            }
+
+            // Populate bookings vào từng ngày
+            foreach (var slot in bookedSlots)
+            {
+                var dateKey = slot.Date.ToString("yyyy-MM-dd");
+                if (result.ContainsKey(dateKey))
+                {
+                    result[dateKey].Add((slot.FieldId, slot.TimeSlotId));
+                }
+            }
+
+            return result;
+        }
+
         public async Task<IEnumerable<Booking>> GetByCustomerAsync(int customerId, BookingStatus? status = null)
         {
             var query = _dbSet
@@ -105,6 +144,23 @@ namespace FootballField.API.Modules.BookingManagement.Repositories
             return await _dbSet
                 .Where(b => b.BookingStatus == BookingStatus.Pending 
                             && b.HoldExpiresAt < now)
+                .ToListAsync();
+        }
+
+        public async Task<List<Booking>> GetBookingsForComplexAsync(int complexId, DateOnly startDate, DateOnly endDate)
+        {
+            var startDateTime = startDate.ToDateTime(TimeOnly.MinValue);
+            var endDateTime = endDate.ToDateTime(TimeOnly.MinValue);
+
+            return await _dbSet
+                .Include(b => b.Field)
+                .Include(b => b.TimeSlot)
+                .Where(b => b.Field.ComplexId == complexId
+                            && b.BookingDate.Date >= startDateTime
+                            && b.BookingDate.Date <= endDateTime
+                            && b.BookingStatus != BookingStatus.Cancelled
+                            && b.BookingStatus != BookingStatus.Rejected
+                            && b.BookingStatus != BookingStatus.Expired)
                 .ToListAsync();
         }
     }

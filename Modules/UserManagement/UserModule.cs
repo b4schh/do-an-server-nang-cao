@@ -10,9 +10,14 @@ public static class UserModule
     {
         // Register User Repositories
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
         
         // Register User Services
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<IPermissionManagementService, PermissionManagementService>();
         
         return services;
     }

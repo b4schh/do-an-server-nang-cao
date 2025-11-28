@@ -19,4 +19,6 @@ public class Review
 
     // Navigation properties
     public Booking Booking { get; set; } = null!;
+    public ICollection<ReviewImage> Images { get; set; } = new List<ReviewImage>();
+    public ICollection<ReviewHelpfulVote> HelpfulVotes { get; set; } = new List<ReviewHelpfulVote>();
 }

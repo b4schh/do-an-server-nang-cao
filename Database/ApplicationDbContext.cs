@@ -16,12 +16,18 @@ public class ApplicationDbContext : DbContext
 
     // DbSets (expression-bodied, tránh setter)
     public DbSet<User> Users => Set<User>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Complex> Complexes => Set<Complex>();
     public DbSet<Field> Fields => Set<Field>();
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
     public DbSet<FavoriteComplex> FavoriteComplexes => Set<FavoriteComplex>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<ReviewImage> ReviewImages => Set<ReviewImage>();
+    public DbSet<ReviewHelpfulVote> ReviewHelpfulVotes => Set<ReviewHelpfulVote>();
     public DbSet<ComplexImage> ComplexImages => Set<ComplexImage>();
     public DbSet<OwnerSetting> OwnerSettings => Set<OwnerSetting>();
     public DbSet<SystemConfig> SystemConfigs => Set<SystemConfig>();
@@ -46,7 +52,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(200);
             entity.Property(e => e.Phone).HasColumnName("phone").HasMaxLength(15);
             entity.Property(e => e.Password).HasColumnName("password").HasMaxLength(255);
-            entity.Property(e => e.Role).HasColumnName("role").IsRequired();
             entity.Property(e => e.AvatarUrl).HasColumnName("avatar_url").IsUnicode(false);
             entity.Property(e => e.Status).HasColumnName("status").IsRequired();
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
@@ -289,6 +294,51 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // ======================= REVIEW IMAGE =======================
+        modelBuilder.Entity<ReviewImage>(entity =>
+        {
+            entity.ToTable("REVIEW_IMAGE");
+
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+
+            entity.Property(e => e.ReviewId).HasColumnName("review_id").IsRequired();
+            entity.Property(e => e.ImageUrl).HasColumnName("image_url").IsRequired().IsUnicode(false);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+
+            entity.HasIndex(e => e.ReviewId).HasDatabaseName("IX_ReviewImage_ReviewId");
+
+            entity.HasOne(e => e.Review)
+                .WithMany(e => e.Images)
+                .HasForeignKey(e => e.ReviewId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ======================= REVIEW HELPFUL VOTE =======================
+        modelBuilder.Entity<ReviewHelpfulVote>(entity =>
+        {
+            entity.ToTable("REVIEW_HELPFUL_VOTE");
+
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+
+            entity.Property(e => e.ReviewId).HasColumnName("review_id").IsRequired();
+            entity.Property(e => e.UserId).HasColumnName("user_id").IsRequired();
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+
+            entity.HasIndex(e => new { e.ReviewId, e.UserId }).IsUnique().HasDatabaseName("IX_ReviewHelpfulVote_ReviewId_UserId");
+
+            entity.HasOne(e => e.Review)
+                .WithMany(e => e.HelpfulVotes)
+                .HasForeignKey(e => e.ReviewId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
         // ======================= COMPLEX IMAGE =======================
         modelBuilder.Entity<ComplexImage>(entity =>
         {
@@ -420,6 +470,84 @@ public class ApplicationDbContext : DbContext
                 .WithMany(e => e.SentNotifications)
                 .HasForeignKey(e => e.SenderId)
                 .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ======================= ROLE =======================
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.ToTable("ROLE");
+
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+
+            entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(50).IsUnicode(true).IsRequired();
+            entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(255).IsUnicode(true);
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        // ======================= PERMISSION =======================
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.ToTable("PERMISSION");
+
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+
+            entity.Property(e => e.PermissionKey).HasColumnName("permission_key").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(255).IsUnicode(true);
+            entity.Property(e => e.Module).HasColumnName("module").HasMaxLength(50).IsUnicode(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+
+            entity.HasIndex(e => e.PermissionKey).IsUnique();
+        });
+
+        // ======================= ROLE_PERMISSION =======================
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.ToTable("ROLE_PERMISSION");
+
+            entity.HasKey(e => new { e.RoleId, e.PermissionId });
+
+            entity.Property(e => e.RoleId).HasColumnName("role_id");
+            entity.Property(e => e.PermissionId).HasColumnName("permission_id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+
+            entity.HasOne(e => e.Role)
+                .WithMany(e => e.RolePermissions)
+                .HasForeignKey(e => e.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Permission)
+                .WithMany(e => e.RolePermissions)
+                .HasForeignKey(e => e.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ======================= USER_ROLE =======================
+        modelBuilder.Entity<UserRole>(entity =>
+        {
+            entity.ToTable("USER_ROLE");
+
+            entity.HasKey(e => new { e.UserId, e.RoleId });
+
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.RoleId).HasColumnName("role_id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+
+            entity.HasOne(e => e.User)
+                .WithMany(e => e.UserRoles)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Role)
+                .WithMany(e => e.UserRoles)
+                .HasForeignKey(e => e.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
     }

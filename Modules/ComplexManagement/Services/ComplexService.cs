@@ -7,6 +7,7 @@ using FootballField.API.Modules.BookingManagement.Repositories;
 using FootballField.API.Modules.UserManagement.Repositories;
 using FootballField.API.Modules.ComplexManagement.Entities;
 using FootballField.API.Modules.UserManagement.Entities;
+using FootballField.API.Shared.Utils;
 
 namespace FootballField.API.Modules.ComplexManagement.Services
 {
@@ -87,11 +88,71 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             return complexDto;
         }
 
+        public async Task<ComplexWeeklyDetailsDto?> GetComplexWeeklyDetailsAsync(int id, DateTime startDate, DateTime endDate)
+        {
+            var complex = await _complexRepository.GetComplexWithFullDetailsAsync(id);
+            if (complex == null) return null;
+
+            // Map basic complex info
+            var complexDto = _mapper.Map<ComplexWeeklyDetailsDto>(complex);
+
+            // Lấy danh sách booked timeslots cho range ngày
+            var bookedTimeSlotsByDate = await _bookingRepository.GetBookedTimeSlotIdsForDateRangeAsync(id, startDate, endDate);
+
+            // Map fields với daily timeslots
+            complexDto.Fields = complex.Fields.Select(f =>
+            {
+                var fieldDto = new FieldWeeklyAvailabilityDto
+                {
+                    Id = f.Id,
+                    ComplexId = f.ComplexId,
+                    Name = f.Name,
+                    SurfaceType = f.SurfaceType,
+                    FieldSize = f.FieldSize,
+                    IsActive = f.IsActive,
+                    DailyTimeSlots = new Dictionary<string, IEnumerable<DailyTimeSlotDto>>()
+                };
+
+                // Tạo timeslots cho từng ngày trong range
+                for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+                {
+                    var dateKey = date.ToString("yyyy-MM-dd");
+                    var bookedSlotsForDate = bookedTimeSlotsByDate.ContainsKey(dateKey) 
+                        ? bookedTimeSlotsByDate[dateKey] 
+                        : new HashSet<(int FieldId, int TimeSlotId)>();
+
+                    fieldDto.DailyTimeSlots[dateKey] = f.TimeSlots.Select(ts => new DailyTimeSlotDto
+                    {
+                        Id = ts.Id,
+                        StartTime = ts.StartTime,
+                        EndTime = ts.EndTime,
+                        Price = ts.Price,
+                        IsActive = ts.IsActive,
+                        // IsAvailable = true nếu KHÔNG có trong booked list
+                        IsAvailable = !bookedSlotsForDate.Contains((f.Id, ts.Id))
+                    }).OrderBy(ts => ts.StartTime).ToList();
+                }
+
+                return fieldDto;
+            }).ToList();
+
+            return complexDto;
+        }
+
         public async Task<IEnumerable<ComplexDto>> GetComplexesByOwnerIdAsync(int ownerId)
         {
             var complexes = await _complexRepository.GetByOwnerIdAsync(ownerId);
             return _mapper.Map<IEnumerable<ComplexDto>>(complexes);
         }
+
+        public async Task<bool> ValidateOwnerRoleAsync(int ownerId)
+        {
+            var owner = await _userRepository.GetUserByIdWithRoleAsync(ownerId);
+            if (owner == null) return false;
+            
+            return owner.UserRoles.Any(ur => ur.Role.Name == "Owner" || ur.Role.Name == "Admin");
+        }
+
         public async Task<IEnumerable<ComplexDto>> SearchComplexesAsync(
             string? name,
             string? street,
@@ -189,13 +250,15 @@ namespace FootballField.API.Modules.ComplexManagement.Services
 
         public async Task<ComplexDto> CreateComplexByAdminAsync(CreateComplexByAdminDto createComplexDto)
         {
-            // Validate OwnerId phải tồn tại và có role Owner
+            // Validate OwnerId phải tồn tại và có role Owner hoặc Admin
             var owner = await _userRepository.GetUserByIdWithRoleAsync(createComplexDto.OwnerId);
 
             if (owner == null)
                 throw new Exception("Không tìm thấy Owner với ID này");
 
-            if (owner.Role != UserRole.Owner && owner.Role != UserRole.Admin)
+            // Check if user has Owner or Admin role via RBAC
+            var hasOwnerRole = owner.UserRoles.Any(ur => ur.Role.Name == "Owner" || ur.Role.Name == "Admin");
+            if (!hasOwnerRole)
                 throw new Exception("User này không phải là Owner hoặc Admin, không thể tạo sân");
 
             var complex = _mapper.Map<Complex>(createComplexDto);
@@ -250,6 +313,117 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _complexRepository.UpdateAsync(complex);
+        }
+
+        public async Task<AvailabilityDto?> GetAvailabilityAsync(int complexId, DateOnly startDate, int days)
+        {
+            // 1. Lấy complex với fields và timeslots
+            var complex = await _complexRepository.GetComplexWithFullDetailsAsync(complexId);
+            if (complex == null) return null;
+
+            // 2. Tính toán endDate
+            var endDate = startDate.AddDays(days - 1);
+
+            // 3. Lấy danh sách bookings trong khoảng thời gian
+            var bookings = await _bookingRepository.GetBookingsForComplexAsync(complexId, startDate, endDate);
+
+            // 4. Tạo dictionary để tra cứu bookings nhanh theo (date, fieldId, timeSlotId)
+            var bookingLookup = bookings
+                .GroupBy(b => DateOnly.FromDateTime(b.BookingDate))
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(b => (b.FieldId, b.TimeSlotId)).ToHashSet()
+                );
+
+            // 5. Lấy tất cả các unique time slots (startTime, endTime) từ tất cả fields
+            var allTimeSlots = complex.Fields
+                .Where(f => !f.IsDeleted && f.IsActive)
+                .SelectMany(f => f.TimeSlots.Where(ts => ts.IsActive))
+                .Select(ts => new { ts.StartTime, ts.EndTime })
+                .Distinct()
+                .OrderBy(ts => ts.StartTime)
+                .ToList();
+
+            // 6. Lấy danh sách tất cả fields active
+            var activeFields = complex.Fields
+                .Where(f => !f.IsDeleted && f.IsActive)
+                .ToList();
+
+            // 7. Build response
+            var result = new AvailabilityDto
+            {
+                ComplexId = complexId,
+                Days = new List<AvailabilityDayDto>()
+            };
+
+            var now = TimeZoneHelper.VietnamNow;
+
+            for (int i = 0; i < days; i++)
+            {
+                var currentDate = startDate.AddDays(i);
+                var currentDateTime = currentDate.ToDateTime(TimeOnly.MinValue);
+
+                var dayDto = new AvailabilityDayDto
+                {
+                    Date = currentDate.ToString("yyyy-MM-dd"),
+                    TimeSlots = new List<AvailabilityTimeSlotDto>()
+                };
+
+                // Lấy booked slots cho ngày này
+                var bookedSlotsForDay = bookingLookup.ContainsKey(currentDate)
+                    ? bookingLookup[currentDate]
+                    : new HashSet<(int FieldId, int TimeSlotId)>();
+
+                foreach (var timeSlot in allTimeSlots)
+                {
+                    var timeSlotDto = new AvailabilityTimeSlotDto
+                    {
+                        StartTime = timeSlot.StartTime.ToString(@"hh\:mm"),
+                        EndTime = timeSlot.EndTime.ToString(@"hh\:mm"),
+                        Fields = new List<AvailabilityFieldDto>()
+                    };
+
+                    // Kiểm tra xem slot này có nằm trong quá khứ không
+                    var slotDateTime = currentDateTime.Add(timeSlot.StartTime);
+                    var isPast = slotDateTime < now;
+
+                    foreach (var field in activeFields)
+                    {
+                        // Tìm timeslot tương ứng trong field
+                        var fieldTimeSlot = field.TimeSlots.FirstOrDefault(ts =>
+                            ts.StartTime == timeSlot.StartTime &&
+                            ts.EndTime == timeSlot.EndTime &&
+                            ts.IsActive);
+
+                        if (fieldTimeSlot != null)
+                        {
+                            var isBooked = bookedSlotsForDay.Contains((field.Id, fieldTimeSlot.Id));
+
+                            timeSlotDto.Fields.Add(new AvailabilityFieldDto
+                            {
+                                FieldId = field.Id,
+                                FieldName = field.Name,
+                                FieldSize = field.FieldSize,
+                                SurfaceType = field.SurfaceType,
+                                TimeSlotId = fieldTimeSlot.Id,
+                                Price = fieldTimeSlot.Price,
+                                IsBooked = isBooked,
+                                IsPast = isPast
+                            });
+                        }
+                    }
+
+                    // Chỉ thêm timeslot nếu có ít nhất 1 field có slot này
+                    if (timeSlotDto.Fields.Any())
+                    {
+                        dayDto.TimeSlots.Add(timeSlotDto);
+                    }
+                }
+
+                result.Days.Add(dayDto);
+            }
+
+            return result;
         }
     }
 }

@@ -6,14 +6,6 @@ using FootballField.API.Modules.ReviewManagement.Entities;
 
 namespace FootballField.API.Modules.UserManagement.Entities;
 
-// Enums
-public enum UserRole : byte
-{
-    Customer = 0,
-    Owner = 1,
-    Admin = 2
-}
-
 public enum UserStatus : byte
 {
     Inactive = 0,
@@ -29,7 +21,6 @@ public class User
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public string? Password { get; set; }
-    public UserRole Role { get; set; } = UserRole.Customer;
     public string? AvatarUrl { get; set; }
     public UserStatus Status { get; set; } = UserStatus.Active;
     public bool IsDeleted { get; set; } = false;
@@ -40,6 +31,7 @@ public class User
 
     // Navigation properties
     public User? DeletedByUser { get; set; }
+    public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public ICollection<Complex> OwnedComplexes { get; set; } = new List<Complex>();
     public ICollection<Booking> CustomerBookings { get; set; } = new List<Booking>();
     public ICollection<Booking> OwnerBookings { get; set; } = new List<Booking>();

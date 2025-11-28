@@ -3,6 +3,7 @@ using FootballField.API.Modules.AuthManagement.Services;
 using FootballField.API.Modules.UserManagement.Dtos;
 using FootballField.API.Modules.UserManagement.Entities;
 using FootballField.API.Modules.UserManagement.Repositories;
+using FootballField.API.Shared.Storage;
 
 namespace FootballField.API.Modules.UserManagement.Services
 {
@@ -11,37 +12,84 @@ namespace FootballField.API.Modules.UserManagement.Services
         private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
         private readonly IAuthService _authService;
+        private readonly IStorageService _storageService;
 
-        public UserService(IUserRepository userRepository, IMapper mapper, IAuthService authService)
+        public UserService(
+            IUserRepository userRepository, 
+            IMapper mapper, 
+            IAuthService authService,
+            IStorageService storageService)
         {
             _userRepository = userRepository;
             _mapper = mapper;
             _authService = authService;
+            _storageService = storageService;
         }
 
         public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
         {
-            var users = await _userRepository.GetAllAsync(u => !u.IsDeleted);
-            return _mapper.Map<IEnumerable<UserDto>>(users);
+            var users = await _userRepository.GetAllUsersWithRolesAsync();
+            var userDtos = _mapper.Map<IEnumerable<UserDto>>(users);
+            
+            // Map AvatarUrl to full URL
+            foreach (var dto in userDtos)
+            {
+                if (!string.IsNullOrEmpty(dto.AvatarUrl))
+                {
+                    dto.AvatarUrl = _storageService.GetFullUrl(dto.AvatarUrl);
+                }
+            }
+            
+            return userDtos;
         }
 
         public async Task<(IEnumerable<UserDto> users, int totalCount)> GetPagedUsersAsync(int pageIndex, int pageSize)
         {
             var (users, totalCount) = await _userRepository.GetPagedAsync(pageIndex, pageSize, u => !u.IsDeleted);
-            var userDtos = _mapper.Map<IEnumerable<UserDto>>(users);
+            var userDtos = _mapper.Map<IEnumerable<UserDto>>(users).ToList();
+            
+            // Map AvatarUrl to full URL
+            foreach (var dto in userDtos)
+            {
+                if (!string.IsNullOrEmpty(dto.AvatarUrl))
+                {
+                    dto.AvatarUrl = _storageService.GetFullUrl(dto.AvatarUrl);
+                }
+            }
+            
             return (userDtos, totalCount);
         }
 
         public async Task<UserDto?> GetUserByIdAsync(int id)
         {
-            var user = await _userRepository.GetByIdAsync(id);
-            return user == null ? null : _mapper.Map<UserDto>(user);
+            var user = await _userRepository.GetByIdWithRolesAsync(id);
+            if (user == null) return null;
+            
+            var dto = _mapper.Map<UserDto>(user);
+            
+            // Map AvatarUrl to full URL
+            if (!string.IsNullOrEmpty(dto.AvatarUrl))
+            {
+                dto.AvatarUrl = _storageService.GetFullUrl(dto.AvatarUrl);
+            }
+            
+            return dto;
         }
 
         public async Task<UserDto?> GetUserByEmailAsync(string email)
         {
             var user = await _userRepository.GetByEmailAsync(email);
-            return user == null ? null : _mapper.Map<UserDto>(user);
+            if (user == null) return null;
+            
+            var dto = _mapper.Map<UserDto>(user);
+            
+            // Map AvatarUrl to full URL
+            if (!string.IsNullOrEmpty(dto.AvatarUrl))
+            {
+                dto.AvatarUrl = _storageService.GetFullUrl(dto.AvatarUrl);
+            }
+            
+            return dto;
         }
 
         public async Task<UserDto> CreateUserAsync(CreateUserDto createUserDto)
@@ -72,10 +120,11 @@ namespace FootballField.API.Modules.UserManagement.Services
             if (existingUser == null)
                 throw new Exception("User not found");
 
-            existingUser.Role = updateUserRoleDto.Role;
-            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
-
-            await _userRepository.UpdateAsync(existingUser);
+            // Remove old roles
+            await _userRepository.RemoveUserRolesAsync(id);
+            
+            // Add new role
+            await _userRepository.AddUserRoleAsync(id, updateUserRoleDto.RoleId);
         }
 
         public async Task SoftDeleteUserAsync(int id)
@@ -99,7 +148,15 @@ namespace FootballField.API.Modules.UserManagement.Services
 
             await _userRepository.UpdateAsync(user);
 
-            return _mapper.Map<UserResponseDto>(user);
+            var dto = _mapper.Map<UserResponseDto>(user);
+            
+            // Map AvatarUrl to full URL
+            if (!string.IsNullOrEmpty(dto.AvatarUrl))
+            {
+                dto.AvatarUrl = _storageService.GetFullUrl(dto.AvatarUrl);
+            }
+            
+            return dto;
         }
 
         public async Task<UserResponseDto> UpdateUserProfileAsync(int id, UpdateUserProfileDto dto)
@@ -131,7 +188,15 @@ namespace FootballField.API.Modules.UserManagement.Services
 
             await _userRepository.UpdateAsync(user);
 
-            return _mapper.Map<UserResponseDto>(user);
+            var responseDto = _mapper.Map<UserResponseDto>(user);
+            
+            // Map AvatarUrl to full URL
+            if (!string.IsNullOrEmpty(responseDto.AvatarUrl))
+            {
+                responseDto.AvatarUrl = _storageService.GetFullUrl(responseDto.AvatarUrl);
+            }
+            
+            return responseDto;
         }
 
         public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
@@ -139,6 +204,10 @@ namespace FootballField.API.Modules.UserManagement.Services
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null || user.IsDeleted)
                 throw new Exception("Không tìm thấy người dùng");
+
+            // Kiểm tra mật khẩu mới không được trùng với mật khẩu cũ
+            if (currentPassword == newPassword)
+                throw new Exception("Mật khẩu mới không được trùng với mật khẩu hiện tại");
 
             // Kiểm tra mật khẩu hiện tại
             if (!_authService.VerifyPassword(currentPassword, user.Password))
@@ -152,6 +221,27 @@ namespace FootballField.API.Modules.UserManagement.Services
 
             await _userRepository.UpdateAsync(user);
             return true;
+        }
+
+        public async Task UpdateUserStatusAsync(int userId, byte status)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null || user.IsDeleted)
+                throw new Exception("Không tìm thấy người dùng");
+
+            user.Status = (UserStatus)status;
+            await _userRepository.UpdateAsync(user);
+        }
+
+        public async Task<Dictionary<string, int>> GetUserStatisticsByRoleAsync()
+        {
+            var users = await _userRepository.GetAllUsersWithRolesAsync();
+            var stats = users
+                .SelectMany(u => u.UserRoles)
+                .GroupBy(ur => ur.Role.Name)
+                .ToDictionary(g => g.Key, g => g.Count());
+            
+            return stats;
         }
     }
 }

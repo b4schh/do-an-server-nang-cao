@@ -16,5 +16,7 @@ namespace FootballField.API.Modules.UserManagement.Services
         Task<UserResponseDto> UpdateAvatarAsync(int userId, string? avatarUrl);
         Task<UserResponseDto> UpdateUserProfileAsync(int id, UpdateUserProfileDto dto);
         Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
+        Task UpdateUserStatusAsync(int userId, byte status);
+        Task<Dictionary<string, int>> GetUserStatisticsByRoleAsync();
     }
 }

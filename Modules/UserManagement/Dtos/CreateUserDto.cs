@@ -21,8 +21,6 @@ namespace FootballField.API.Modules.UserManagement.Dtos
         [Required(ErrorMessage = "Mật khẩu là bắt buộc")]
         [MinLength(6, ErrorMessage = "Mật khẩu phải có ít nhất 6 ký tự")]
         public string Password { get; set; } = null!;
-
-        public UserRole Role { get; set; } = UserRole.Customer;
         
         public string? AvatarUrl { get; set; }
     }
