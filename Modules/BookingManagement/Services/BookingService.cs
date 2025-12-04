@@ -20,6 +20,7 @@ namespace FootballField.API.Modules.BookingManagement.Services
         private readonly IStorageService _storageService;
         private readonly IMapper _mapper;
         private readonly INotificationService _notificationService;
+        private readonly ILogger<BookingService> _logger;
 
         private const decimal DEFAULT_DEPOSIT_RATE = 0.3m; // 30% deposit
         private const int HOLD_MINUTES = 5;
@@ -31,7 +32,8 @@ namespace FootballField.API.Modules.BookingManagement.Services
             IUserRepository userRepository,
             IStorageService storageService,
             IMapper mapper,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            ILogger<BookingService> logger)
         {
             _bookingRepository = bookingRepository;
             _fieldRepository = fieldRepository;
@@ -40,6 +42,7 @@ namespace FootballField.API.Modules.BookingManagement.Services
             _storageService = storageService;
             _mapper = mapper;
             _notificationService = notificationService;
+            _logger = logger;
         }
 
         public async Task<BookingDto> CreateBookingAsync(int customerId, CreateBookingDto dto)
@@ -87,6 +90,9 @@ namespace FootballField.API.Modules.BookingManagement.Services
 
             var created = await _bookingRepository.AddAsync(booking);
             var bookingWithDetails = await _bookingRepository.GetDetailAsync(created.Id);
+
+            _logger.LogInformation("Tạo booking mới thành công - Booking ID: {BookingId}, Customer ID: {CustomerId}, Field ID: {FieldId}, Date: {BookingDate}, TimeSlot: {TimeSlotId}, Amount: {TotalAmount}",
+                created.Id, customerId, dto.FieldId, dto.BookingDate, dto.TimeSlotId, totalAmount);
 
             // Notify owner
             try
@@ -154,6 +160,9 @@ namespace FootballField.API.Modules.BookingManagement.Services
 
             await _bookingRepository.UpdateAsync(booking);
 
+            _logger.LogInformation("Upload payment proof thành công - Booking ID: {BookingId}, Customer ID: {CustomerId}, Image URL: {ImageUrl}",
+                bookingId, customerId, imageUrl);
+
             // Notify owner that a customer uploaded payment proof and is waiting for approval
             try
             {
@@ -205,6 +214,9 @@ namespace FootballField.API.Modules.BookingManagement.Services
             booking.ApprovedAt = TimeZoneHelper.VietnamNow;
 
             await _bookingRepository.UpdateAsync(booking);
+
+            _logger.LogInformation("Duyệt booking thành công - Booking ID: {BookingId}, Owner ID: {OwnerId}, Customer ID: {CustomerId}",
+                bookingId, ownerId, booking.CustomerId);
 
             // Notify customer that booking was approved
             try
@@ -260,6 +272,9 @@ namespace FootballField.API.Modules.BookingManagement.Services
 
             await _bookingRepository.UpdateAsync(booking);
 
+            _logger.LogWarning("Từ chối booking - Booking ID: {BookingId}, Owner ID: {OwnerId}, Customer ID: {CustomerId}, Reason: {Reason}",
+                bookingId, ownerId, booking.CustomerId, reason ?? "Không có lý do");
+
             // Notify customer that booking was rejected
             try
             {
@@ -313,6 +328,10 @@ namespace FootballField.API.Modules.BookingManagement.Services
             booking.CancelledAt = TimeZoneHelper.VietnamNow;
 
             await _bookingRepository.UpdateAsync(booking);
+
+            var cancelledBy = userId == booking.CustomerId ? "Customer" : "Owner";
+            _logger.LogInformation("Hủy booking - Booking ID: {BookingId}, Cancelled By: {CancelledBy} (User ID: {UserId}), Customer ID: {CustomerId}, Owner ID: {OwnerId}",
+                bookingId, cancelledBy, userId, booking.CustomerId, booking.OwnerId);
 
             // Notify the other party (if customer cancelled notify owner, if owner cancelled notify customer)
             try

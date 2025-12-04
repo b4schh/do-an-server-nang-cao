@@ -2,11 +2,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Data;
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Any;
 using Microsoft.AspNetCore.Http.Features;
 using System.Globalization;
 using Minio;
+using Serilog;
+using Serilog.Sinks.MSSqlServer;
+using Serilog.Events;
+using Serilog.Context;
+
 
 // Shared Components
 using FootballField.API.Shared.Utils;
@@ -28,6 +34,83 @@ using FootballField.API.Modules.OwnerSettingsManagement;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ========== CẤU HÌNH SERILOG ==========
+// Configure Serilog with connection string from configuration
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .MinimumLevel.Information()
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .Enrich.WithProcessId()
+    .Enrich.WithThreadId()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(
+        path: "logs/system-.log",
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}",
+        retainedFileCountLimit: 30)
+    .WriteTo.MSSqlServer(
+        connectionString: connectionString,
+        restrictedToMinimumLevel: LogEventLevel.Warning, // Chỉ lưu Warning, Error, Fatal vào DB
+        sinkOptions: new MSSqlServerSinkOptions
+        {
+            TableName = "SYSTEM_LOG",
+            AutoCreateSqlTable = false,
+            SchemaName = "dbo"
+        },
+        columnOptions: GetSqlColumnOptions())
+    .CreateLogger();
+
+
+
+static ColumnOptions GetSqlColumnOptions()
+{
+    var columnOptions = new ColumnOptions();
+
+    // Clear default columns
+    columnOptions.Store.Clear();
+
+    // Only add the columns that exist in SYSTEM_LOG table
+    columnOptions.Store.Add(StandardColumn.Level);
+    columnOptions.Store.Add(StandardColumn.Message);
+    columnOptions.Store.Add(StandardColumn.TimeStamp);
+
+    // Map to your table columns (lowercase with underscore)
+    columnOptions.Level.ColumnName = "log_level";
+    columnOptions.Level.StoreAsEnum = false;
+
+    columnOptions.Message.ColumnName = "message";
+
+    columnOptions.TimeStamp.ColumnName = "created_at";
+    columnOptions.TimeStamp.ConvertToUtc = false;
+
+    // Add Source as additional column with custom value from property
+    columnOptions.AdditionalColumns = new System.Collections.ObjectModel.Collection<SqlColumn>
+    {
+        new SqlColumn
+        {
+            ColumnName = "source",
+            PropertyName = "SourceContext",
+            DataType = System.Data.SqlDbType.NVarChar,
+            DataLength = 100,
+            AllowNull = true
+        }
+    };
+
+    columnOptions.DisableTriggers = true;
+
+    return columnOptions;
+}
+
+// Use Serilog for all logging
+builder.Host.UseSerilog();
+builder.Logging.ClearProviders();
+
 // ========== CẤU HÌNH TIMEZONE ==========
 // Set timezone cho toàn bộ ứng dụng
 string timeZoneId =
@@ -42,8 +125,7 @@ Environment.SetEnvironmentVariable("TZ", timeZoneId);
 CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("vi-VN");
 CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("vi-VN");
 
-// Đọc Connection String từ appsettings.json
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// Đọc Connection String từ appsettings.json (already read above for Serilog)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
@@ -91,7 +173,7 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
         ClockSkew = TimeSpan.Zero
     };
-    
+
 });
 
 builder.Services.AddAuthorization();
@@ -193,11 +275,22 @@ builder.Services.AddCors(options =>
 // Build app
 var app = builder.Build();
 
+// Use Serilog request logging
+app.UseSerilogRequestLogging();
+
+app.Use(async (context, next) =>
+{
+    var userId = context.User?.FindFirst("id")?.Value ?? "anonymous";
+    LogContext.PushProperty("UserId", userId);
+    await next();
+});
+
+
 // Áp dụng Migration tự động
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    
+
     try
     {
         if (!db.Database.CanConnect())
@@ -207,11 +300,19 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[Warning] Database migration skipped: {ex.Message}");
+        Log.Error(ex, "Database migration failed");
     }
 
     // Seed dữ liệu mẫu
-    db.SeedData();
+    try
+    {
+        db.SeedData();
+        Log.Information("Database seeded successfully");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Database seeding failed");
+    }
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
@@ -231,7 +332,19 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-
 app.MapControllers();
 
-app.Run();
+try
+{
+    Log.Information("Starting Football Field Booking API");
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

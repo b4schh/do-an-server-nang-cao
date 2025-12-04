@@ -17,17 +17,20 @@ namespace FootballField.API.Modules.ComplexManagement.Services
         private readonly IUserRepository _userRepository;
         private readonly IBookingRepository _bookingRepository;
         private readonly IMapper _mapper;
+        private readonly ILogger<ComplexService> _logger;
 
         public ComplexService(
             IComplexRepository complexRepository,
             IUserRepository userRepository,
             IBookingRepository bookingRepository,
-            IMapper mapper)
+            IMapper mapper,
+            ILogger<ComplexService> logger)
         {
             _complexRepository = complexRepository;
             _userRepository = userRepository;
             _bookingRepository = bookingRepository;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<ComplexDto>> GetAllComplexesAsync()
@@ -235,6 +238,10 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             var created = await _complexRepository.AddAsync(complex);
+            
+            _logger.LogInformation("Tạo complex mới thành công - Complex ID: {ComplexId}, Name: {Name}, Owner ID: {OwnerId}",
+                created.Id, created.Name, created.OwnerId);
+            
             return _mapper.Map<ComplexDto>(created);
         }
 
@@ -245,6 +252,10 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             var created = await _complexRepository.AddAsync(complex);
+            
+            _logger.LogInformation("Owner tạo complex mới - Complex ID: {ComplexId}, Name: {Name}, Owner ID: {OwnerId}",
+                created.Id, created.Name, ownerId);
+            
             return _mapper.Map<ComplexDto>(created);
         }
 
@@ -265,6 +276,10 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             var created = await _complexRepository.AddAsync(complex);
+            
+            _logger.LogInformation("Admin tạo complex mới - Complex ID: {ComplexId}, Name: {Name}, Owner ID: {OwnerId}",
+                created.Id, created.Name, created.OwnerId);
+            
             return _mapper.Map<ComplexDto>(created);
         }
 
@@ -278,11 +293,16 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _complexRepository.UpdateAsync(existingComplex);
+            
+            _logger.LogInformation("Cập nhật complex - Complex ID: {ComplexId}, Name: {Name}",
+                id, existingComplex.Name);
         }
 
         public async Task SoftDeleteComplexAsync(int id)
         {
             await _complexRepository.SoftDeleteAsync(id);
+            
+            _logger.LogWarning("Xóa mềm complex - Complex ID: {ComplexId}", id);
         }
 
         public async Task ApproveComplexAsync(int id)

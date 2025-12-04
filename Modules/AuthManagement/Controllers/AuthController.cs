@@ -81,5 +81,25 @@ namespace FootballField.API.Modules.AuthManagement.Controllers
         {
             return Ok(ApiResponse<string>.Ok("Welcome Admin!", "Access granted"));
         }
+
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                return Ok(ApiResponse<List<string>>.Fail(string.Join(", ", errors), 400));
+            }
+
+            var result = await _authService.RefreshTokenAsync(request);
+            
+            if (result == null)
+                return Unauthorized(ApiResponse<string>.Fail("Refresh token không hợp lệ hoặc đã hết hạn", 401));
+
+            return Ok(ApiResponse<RefreshTokenResponse>.Ok(result, "Làm mới token thành công"));
+        }
     }
 }

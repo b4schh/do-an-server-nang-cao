@@ -7,6 +7,7 @@ namespace FootballField.API.Modules.AuthManagement.Services
     {
         Task<LoginResponse?> LoginAsync(LoginRequest request);
         Task<LoginResponse?> RegisterAsync(RegisterRequest request);
+        Task<RefreshTokenResponse?> RefreshTokenAsync(RefreshTokenRequest request);
         Task<UserDto?> GetCurrentUserAsync(int userId);
         string HashPassword(string password);
         Task<bool> ValidatePasswordAsync(string password, string hashedPassword);

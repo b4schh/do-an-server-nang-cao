@@ -13,17 +13,20 @@ namespace FootballField.API.Modules.UserManagement.Services
         private readonly IMapper _mapper;
         private readonly IAuthService _authService;
         private readonly IStorageService _storageService;
+        private readonly ILogger<UserService> _logger;
 
         public UserService(
             IUserRepository userRepository, 
             IMapper mapper, 
             IAuthService authService,
-            IStorageService storageService)
+            IStorageService storageService,
+            ILogger<UserService> logger)
         {
             _userRepository = userRepository;
             _mapper = mapper;
             _authService = authService;
             _storageService = storageService;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
@@ -99,6 +102,10 @@ namespace FootballField.API.Modules.UserManagement.Services
             // Không cần set thủ công nữa
 
             var created = await _userRepository.AddAsync(user);
+            
+            _logger.LogInformation("Tạo user mới thành công - User ID: {UserId}, Email: {Email}, LastName: {LastName}, FirstName: {FirstName}",
+                created.Id, created.Email, created.LastName, created.FirstName);
+            
             return _mapper.Map<UserDto>(created);
         }
 
@@ -112,6 +119,9 @@ namespace FootballField.API.Modules.UserManagement.Services
             // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _userRepository.UpdateAsync(existingUser);
+            
+            _logger.LogInformation("Cập nhật thông tin user - User ID: {UserId}, Email: {Email}",
+                id, existingUser.Email);
         }
 
         public async Task UpdateUserRoleAsync(int id, UpdateUserRoleDto updateUserRoleDto)
@@ -125,11 +135,16 @@ namespace FootballField.API.Modules.UserManagement.Services
             
             // Add new role
             await _userRepository.AddUserRoleAsync(id, updateUserRoleDto.RoleId);
+            
+            _logger.LogInformation("Cập nhật role cho user - User ID: {UserId}, New Role ID: {RoleId}",
+                id, updateUserRoleDto.RoleId);
         }
 
         public async Task SoftDeleteUserAsync(int id)
         {
             await _userRepository.SoftDeleteAsync(id);
+            
+            _logger.LogWarning("Xóa mềm user - User ID: {UserId}", id);
         }
 
         public async Task<bool> EmailExistsAsync(string email)
@@ -147,6 +162,9 @@ namespace FootballField.API.Modules.UserManagement.Services
             // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _userRepository.UpdateAsync(user);
+            
+            _logger.LogInformation("Cập nhật avatar - User ID: {UserId}, Avatar URL: {AvatarUrl}",
+                userId, avatarUrl ?? "(removed)");
 
             var dto = _mapper.Map<UserResponseDto>(user);
             

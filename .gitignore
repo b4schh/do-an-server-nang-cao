@@ -451,3 +451,5 @@ tmp/
 
 prompt/
 ci/registry/registry-data/*
+db/
+docs/

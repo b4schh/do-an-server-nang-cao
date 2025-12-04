@@ -1,6 +1,7 @@
 using FootballField.API.Database;
 using FootballField.API.Modules.UserManagement.Entities;
 using FootballField.API.Shared.Base;
+using FootballField.API.Shared.Utils;
 using Microsoft.EntityFrameworkCore;
 
 namespace FootballField.API.Modules.UserManagement.Repositories
@@ -71,6 +72,64 @@ namespace FootballField.API.Modules.UserManagement.Repositories
                 .ToListAsync();
             _context.UserRoles.RemoveRange(userRoles);
             await _context.SaveChangesAsync();
+        }
+
+        // ======================= REFRESH TOKEN METHODS =======================
+
+        public async Task<RefreshToken?> GetRefreshTokenAsync(string token)
+        {
+            return await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .ThenInclude(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(rt => rt.Token == token);
+        }
+
+        public async Task AddRefreshTokenAsync(RefreshToken refreshToken)
+        {
+            Console.WriteLine($"[AddRefreshToken] Adding new token for user {refreshToken.UserId}: {refreshToken.Token.Substring(0, 10)}...");
+            await _context.RefreshTokens.AddAsync(refreshToken);
+            await _context.SaveChangesAsync();
+            Console.WriteLine($"[AddRefreshToken] SaveChanges completed, Token ID: {refreshToken.Id}");
+        }
+
+        public async Task RevokeRefreshTokenAsync(string token)
+        {
+            var refreshToken = await _context.RefreshTokens
+                .FirstOrDefaultAsync(rt => rt.Token == token);
+
+            if (refreshToken != null)
+            {
+                refreshToken.IsRevoked = true;
+                refreshToken.RevokedAt = TimeZoneHelper.VietnamNow;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task RevokeAllUserRefreshTokensAsync(int userId)
+        {
+            var refreshTokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+                .ToListAsync();
+
+            if (refreshTokens.Any())
+            {
+                Console.WriteLine($"[RevokeAllUserRefreshTokens] Revoking {refreshTokens.Count} token(s) for user {userId}");
+                
+                foreach (var token in refreshTokens)
+                {
+                    token.IsRevoked = true;
+                    token.RevokedAt = TimeZoneHelper.VietnamNow;
+                    Console.WriteLine($"[RevokeAllUserRefreshTokens] Revoked token: {token.Token.Substring(0, 10)}...");
+                }
+
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"[RevokeAllUserRefreshTokens] SaveChanges completed");
+            }
+            else
+            {
+                Console.WriteLine($"[RevokeAllUserRefreshTokens] No active tokens found for user {userId}");
+            }
         }
     }
 }

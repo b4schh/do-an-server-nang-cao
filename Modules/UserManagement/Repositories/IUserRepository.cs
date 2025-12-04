@@ -14,5 +14,11 @@ namespace FootballField.API.Modules.UserManagement.Repositories
         Task<Role?> GetRoleByNameAsync(string roleName);
         Task AddUserRoleAsync(int userId, int roleId);
         Task RemoveUserRolesAsync(int userId);
+
+        // Refresh Token methods
+        Task<RefreshToken?> GetRefreshTokenAsync(string token);
+        Task AddRefreshTokenAsync(RefreshToken refreshToken);
+        Task RevokeRefreshTokenAsync(string token);
+        Task RevokeAllUserRefreshTokensAsync(int userId);
     }
 }
