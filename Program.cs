@@ -31,6 +31,8 @@ using FootballField.API.Modules.BookingManagement;
 using FootballField.API.Modules.ReviewManagement;
 using FootballField.API.Modules.NotificationManagement;
 using FootballField.API.Modules.OwnerSettingsManagement;
+using FootballField.API.Modules.LocationManagement;
+using FootballField.API.Modules.LocationManagement.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -142,10 +144,12 @@ builder.Services.AddBookingModule();
 builder.Services.AddReviewModule();
 builder.Services.AddNotificationModule();
 builder.Services.AddOwnerSettingsModule();
+builder.Services.AddLocationManagementModule();
 
 // ========== ĐĂNG KÝ UTILITIES ==========
 builder.Services.AddScoped<JwtHelper>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient(); // For LocationSeeder
 
 builder.Services.AddSingleton(vietnamTimeZone);
 
@@ -286,9 +290,12 @@ app.Use(async (context, next) =>
 });
 
 
-// Áp dụng Migration tự động
-using (var scope = app.Services.CreateScope())
+// Áp dụng Migration tự động và Seeding
+await SeedDatabaseAsync(app.Services);
+
+async Task SeedDatabaseAsync(IServiceProvider services)
 {
+    using var scope = services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
     try
@@ -313,7 +320,20 @@ using (var scope = app.Services.CreateScope())
     {
         Log.Error(ex, "Database seeding failed");
     }
-}
+
+    // Seed location data (Province & Ward)
+    try
+    {
+        var locationSeeder = scope.ServiceProvider.GetRequiredService<LocationSeeder>();
+        await locationSeeder.SeedLocationsAsync();
+        Log.Information("Location data seeded successfully");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Location seeding failed");
+    }
+}   
+
 
 app.UseMiddleware<ExceptionMiddleware>();
 

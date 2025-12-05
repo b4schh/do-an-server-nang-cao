@@ -29,9 +29,10 @@ namespace FootballField.API.Modules.ComplexManagement.Services
         Task<AvailabilityDto?> GetAvailabilityAsync(int complexId, DateOnly startDate, int days);
         Task<IEnumerable<ComplexDto>> SearchComplexesAsync(
             string? name,
-            string? street,
             string? ward, 
             string? province,
+            string? surfaceType = null,
+            string? fieldSize = null,
             decimal? minPrice = null,
             decimal? maxPrice = null,
             double? minRating = null,

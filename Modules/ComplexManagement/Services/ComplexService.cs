@@ -88,6 +88,15 @@ namespace FootballField.API.Modules.ComplexManagement.Services
                 }).OrderBy(ts => ts.StartTime)
             });
 
+            // Map images với IsMain
+            complexDto.Images = complex.ComplexImages.Select(img => new ComplexImageResponseDto
+            {
+                Id = img.Id,
+                ComplexId = img.ComplexId,
+                ImageUrl = img.ImageUrl,
+                IsMain = img.IsMain
+            }).OrderByDescending(img => img.IsMain).ThenBy(img => img.Id);
+
             return complexDto;
         }
 
@@ -158,9 +167,10 @@ namespace FootballField.API.Modules.ComplexManagement.Services
 
         public async Task<IEnumerable<ComplexDto>> SearchComplexesAsync(
             string? name,
-            string? street,
             string? ward,
             string? province,
+            string? surfaceType = null,
+            string? fieldSize = null,
             decimal? minPrice = null,
             decimal? maxPrice = null,
             double? minRating = null,
@@ -176,13 +186,6 @@ namespace FootballField.API.Modules.ComplexManagement.Services
                     c.Name.Contains(name, StringComparison.OrdinalIgnoreCase));
             }
 
-            // Filter theo Street
-            if (!string.IsNullOrWhiteSpace(street))
-            {
-                complexes = complexes.Where(c => !string.IsNullOrEmpty(c.Street) &&
-                    c.Street.Contains(street, StringComparison.OrdinalIgnoreCase));
-            }
-
             // Filter theo Ward
             if (!string.IsNullOrWhiteSpace(ward))
             {
@@ -195,6 +198,24 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             {
                 complexes = complexes.Where(c => !string.IsNullOrEmpty(c.Province) &&
                     c.Province.Contains(province, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Filter theo SurfaceType (từ Fields)
+            if (!string.IsNullOrWhiteSpace(surfaceType))
+            {
+                complexes = complexes.Where(c => 
+                    c.Fields != null && c.Fields.Any(f => 
+                        !string.IsNullOrEmpty(f.SurfaceType) && 
+                        f.SurfaceType.Contains(surfaceType, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            // Filter theo FieldSize (từ Fields)
+            if (!string.IsNullOrWhiteSpace(fieldSize))
+            {
+                complexes = complexes.Where(c => 
+                    c.Fields != null && c.Fields.Any(f => 
+                        !string.IsNullOrEmpty(f.FieldSize) && 
+                        f.FieldSize.Contains(fieldSize, StringComparison.OrdinalIgnoreCase)));
             }
 
             // Filter theo giá (từ TimeSlots)

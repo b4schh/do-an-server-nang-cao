@@ -7,6 +7,8 @@ using FootballField.API.Modules.SystemConfigManagement.Entities;
 using FootballField.API.Modules.ReviewManagement.Entities;
 using FootballField.API.Modules.OwnerSettingsManagement.Entities;
 using FootballField.API.Modules.BookingManagement.Entities;
+using FootballField.API.Modules.LocationManagement.Entities;
+using FootballField.API.Modules.LocationManagement.Configurations;
 
 namespace FootballField.API.Database;
 
@@ -35,6 +37,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserActivityLog> UserActivityLogs => Set<UserActivityLog>();
     public DbSet<SystemLog> SystemLogs => Set<SystemLog>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<Province> Provinces => Set<Province>();
+    public DbSet<Ward> Wards => Set<Ward>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -472,6 +476,11 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.SenderId)
                 .OnDelete(DeleteBehavior.NoAction);
         });
+
+        // ======================= LOCATION =======================
+        // Apply configurations from LocationManagement module
+        modelBuilder.ApplyConfiguration(new ProvinceConfiguration());
+        modelBuilder.ApplyConfiguration(new WardConfiguration());
 
         // ======================= ROLE =======================
         modelBuilder.Entity<Role>(entity =>

@@ -114,19 +114,12 @@ namespace FootballField.API.Modules.UserManagement.Controllers
         [HasPermission("user.ban")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateUserStatusDto dto)
         {
-            try
-            {
-                var existing = await _userService.GetUserByIdAsync(id);
-                if (existing == null)
-                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
+            var existing = await _userService.GetUserByIdAsync(id);
+            if (existing == null)
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
 
-                await _userService.UpdateUserStatusAsync(id, dto.Status);
-                return Ok(ApiResponse<string>.Ok("", "Cập nhật trạng thái người dùng thành công"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<string>.Fail(ex.Message, 400));
-            }
+            await _userService.UpdateUserStatusAsync(id, dto.Status);
+            return Ok(ApiResponse<string>.Ok("", "Cập nhật trạng thái người dùng thành công"));
         }
 
         /// Lấy thống kê người dùng theo role (chỉ Admin)
@@ -143,67 +136,53 @@ namespace FootballField.API.Modules.UserManagement.Controllers
         [Authorize]
         public async Task<IActionResult> UploadAvatar(IFormFile file)
         {
-            try
+            // Validate file
+            if (file == null || file.Length == 0)
             {
-                // Validate file
-                if (file == null || file.Length == 0)
-                {
-                    return BadRequest(ApiResponse<string>.Fail("Vui lòng chọn file để upload", 400));
-                }
-
-                // Validate file type
-                var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/webp" };
-                if (!allowedTypes.Contains(file.ContentType.ToLower()))
-                {
-                    return BadRequest(ApiResponse<string>.Fail("Định dạng file không hợp lệ. Chỉ chấp nhận ảnh (JPEG, PNG, WEBP)", 400));
-                }
-
-                // Validate file size (2MB)
-                if (file.Length > 2 * 1024 * 1024)
-                {
-                    return BadRequest(ApiResponse<string>.Fail("Kích thước file không được vượt quá 2MB", 400));
-                }
-
-                // Get current user ID from JWT
-                var userId = GetCurrentUserId();
-
-                var currentUser = await _userService.GetUserByIdAsync(userId);
-                if (currentUser == null)
-                {
-                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
-                }
-
-                // Delete old avatar if exists (before upload new one)
-                if (!string.IsNullOrEmpty(currentUser.AvatarUrl))
-                {
-                    await DeleteOldAvatar(currentUser.AvatarUrl);
-                }
-
-                // Generate unique filename with user-avatars/ prefix
-                var fileExtension = Path.GetExtension(file.FileName ?? "file.jpg");
-                var fileName = $"avatar-{userId}-{Guid.NewGuid()}{fileExtension}";
-                var objectName = $"user-avatars/{fileName}";
-
-                // Upload to MinIO
-                string avatarRelativePath;
-                using (var stream = file.OpenReadStream())
-                {
-                    avatarRelativePath = await _storageService.UploadAsync(stream, objectName, file.ContentType);
-                }
-
-                // Update user avatar URL in database (save relative path)
-                var result = await _userService.UpdateAvatarAsync(userId, avatarRelativePath);
-
-                return Ok(ApiResponse<UserResponseDto>.Ok(result, "Upload avatar thành công"));
+                return BadRequest(ApiResponse<string>.Fail("Vui lòng chọn file để upload", 400));
             }
-            catch (UnauthorizedAccessException ex)
+
+            // Validate file type
+            var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/webp" };
+            if (!allowedTypes.Contains(file.ContentType.ToLower()))
             {
-                return StatusCode(401, ApiResponse<string>.Fail(ex.Message, 401));
+                return BadRequest(ApiResponse<string>.Fail("Định dạng file không hợp lệ. Chỉ chấp nhận ảnh (JPEG, PNG, WEBP)", 400));
             }
-            catch (Exception ex)
+
+            // Validate file size (2MB)
+            if (file.Length > 2 * 1024 * 1024)
             {
-                return StatusCode(500, ApiResponse<string>.Fail($"Lỗi khi upload avatar: {ex.Message}", 500));
+                return BadRequest(ApiResponse<string>.Fail("Kích thước file không được vượt quá 2MB", 400));
             }
+
+            var userId = GetCurrentUserId();
+            var currentUser = await _userService.GetUserByIdAsync(userId);
+            if (currentUser == null)
+            {
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
+            }
+
+            // Delete old avatar if exists
+            if (!string.IsNullOrEmpty(currentUser.AvatarUrl))
+            {
+                await DeleteOldAvatar(currentUser.AvatarUrl);
+            }
+
+            // Generate unique filename
+            var fileExtension = Path.GetExtension(file.FileName ?? "file.jpg");
+            var fileName = $"avatar-{userId}-{Guid.NewGuid()}{fileExtension}";
+            var objectName = $"user-avatars/{fileName}";
+
+            // Upload to MinIO
+            string avatarRelativePath;
+            using (var stream = file.OpenReadStream())
+            {
+                avatarRelativePath = await _storageService.UploadAsync(stream, objectName, file.ContentType);
+            }
+
+            // Update user avatar URL in database
+            var result = await _userService.UpdateAvatarAsync(userId, avatarRelativePath);
+            return Ok(ApiResponse<UserResponseDto>.Ok(result, "Upload avatar thành công"));
         }
 
         /// Xóa avatar của chính mình
@@ -211,74 +190,49 @@ namespace FootballField.API.Modules.UserManagement.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteAvatar()
         {
-            try
+            var userId = GetCurrentUserId();
+            var currentUser = await _userService.GetUserByIdAsync(userId);
+            if (currentUser == null)
             {
-                var userId = GetCurrentUserId();
-
-                var currentUser = await _userService.GetUserByIdAsync(userId);
-                if (currentUser == null)
-                {
-                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
-                }
-
-                // Delete from MinIO if exists
-                if (!string.IsNullOrEmpty(currentUser.AvatarUrl))
-                {
-                    await DeleteOldAvatar(currentUser.AvatarUrl);
-                }
-
-                // Remove avatar URL from database
-                var result = await _userService.UpdateAvatarAsync(userId, null);
-
-                return Ok(ApiResponse<UserResponseDto>.Ok(result, "Xóa avatar thành công"));
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy người dùng", 404));
             }
-            catch (Exception ex)
+
+            // Delete from MinIO if exists
+            if (!string.IsNullOrEmpty(currentUser.AvatarUrl))
             {
-                return StatusCode(500, ApiResponse<string>.Fail($"Lỗi khi xóa avatar: {ex.Message}", 500));
+                await DeleteOldAvatar(currentUser.AvatarUrl);
             }
+
+            // Remove avatar URL from database
+            var result = await _userService.UpdateAvatarAsync(userId, null);
+            return Ok(ApiResponse<UserResponseDto>.Ok(result, "Xóa avatar thành công"));
         }
-
 
         /// Cập nhật thông tin profile của chính mình
         [HttpPatch("me/profile")]
         [Authorize]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateUserProfileDto dto)
         {
-            try
-            {
-                var userId = GetCurrentUserId();
-                var updated = await _userService.UpdateUserProfileAsync(userId, dto);
-                return Ok(ApiResponse<UserResponseDto>.Ok(updated, "Cập nhật thông tin thành công"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<string>.Fail(ex.Message, 400));
-            }
+            var userId = GetCurrentUserId();
+            var updated = await _userService.UpdateUserProfileAsync(userId, dto);
+            return Ok(ApiResponse<UserResponseDto>.Ok(updated, "Cập nhật thông tin thành công"));
         }
-
 
         /// Đổi mật khẩu của chính mình
         [HttpPost("me/change-password")]
         [Authorize]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
         {
-            try
-            {
-                var userId = GetCurrentUserId();
-                var result = await _userService.ChangePasswordAsync(userId, dto.CurrentPassword, dto.NewPassword);
+            var userId = GetCurrentUserId();
+            var result = await _userService.ChangePasswordAsync(userId, dto.CurrentPassword, dto.NewPassword);
 
-                if (result)
-                {
-                    return Ok(ApiResponse<string>.Ok(null, "Đổi mật khẩu thành công"));
-                }
-                else
-                {
-                    return BadRequest(ApiResponse<string>.Fail("Mật khẩu hiện tại không đúng", 400));
-                }
-            }
-            catch (Exception ex)
+            if (result)
             {
-                return BadRequest(ApiResponse<string>.Fail(ex.Message, 400));
+                return Ok(ApiResponse<string>.Ok(null, "Đổi mật khẩu thành công"));
+            }
+            else
+            {
+                return BadRequest(ApiResponse<string>.Fail("Mật khẩu hiện tại không đúng", 400));
             }
         }
 

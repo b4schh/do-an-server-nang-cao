@@ -20,15 +20,8 @@ namespace FootballField.API.Modules.AdminManagement.Controllers
         [HasPermission("booking.force_complete")]
         public async Task<IActionResult> AdminForceCompleteBooking(int id)
         {
-            try
-            {
-                await _bookingService.AdminForceCompleteBookingAsync(id);
-                return Ok(new { message = "Booking đã được chuyển sang trạng thái Completed (FOR TESTING)" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            await _bookingService.AdminForceCompleteBookingAsync(id);
+            return Ok(new { message = "Booking đã được chuyển sang trạng thái Completed (FOR TESTING)" });
         }
     }
 }

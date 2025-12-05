@@ -19,6 +19,6 @@ namespace FootballField.API.Modules.ComplexManagement.Dtos
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public IEnumerable<FieldWithTimeSlotsDto> Fields { get; set; } = new List<FieldWithTimeSlotsDto>();
-        
+        public IEnumerable<ComplexImageResponseDto> Images { get; set; } = new List<ComplexImageResponseDto>();
     }
 }

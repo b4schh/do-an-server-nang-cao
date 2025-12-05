@@ -134,9 +134,10 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
         [HttpGet("search")]
         public async Task<IActionResult> Search(
             [FromQuery] string? name = null,
-            [FromQuery] string? street = null,
             [FromQuery] string? ward = null,
             [FromQuery] string? province = null,
+            [FromQuery] string? surfaceType = null,
+            [FromQuery] string? fieldSize = null,
             [FromQuery] decimal? minPrice = null,
             [FromQuery] decimal? maxPrice = null,
             [FromQuery] double? minRating = null,
@@ -145,7 +146,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
             [FromQuery] int pageSize = 10)
         {
             var complexes = await _complexService.SearchComplexesAsync(
-                name, street, ward, province, minPrice, maxPrice, minRating, maxRating);
+                name, ward, province, surfaceType, fieldSize, minPrice, maxPrice, minRating, maxRating);
 
             var list = complexes?.ToList() ?? new List<ComplexDto>();
             var totalCount = list.Count;
@@ -160,11 +161,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
         [HasPermission("complex.edit_own")]
         public async Task<IActionResult> GetMyComplexes()
         {
-            // Lấy userId từ JWT token
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int ownerId))
-                return Unauthorized(ApiResponse<string>.Fail("Không thể xác thực user", 401));
-
+            var ownerId = GetUserId();
             var complexes = await _complexService.GetComplexesByOwnerIdAsync(ownerId);
             return Ok(ApiResponse<IEnumerable<ComplexDto>>.Ok(complexes, "Lấy danh sách sân thành công"));
         }
@@ -195,10 +192,7 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
         [HasPermission("complex.create")]
         public async Task<IActionResult> CreateByOwner([FromBody] CreateComplexByOwnerDto createComplexDto)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int ownerId))
-                return Unauthorized(ApiResponse<string>.Fail("Không thể xác thực user", 401));
-
+            var ownerId = GetUserId();
             var created = await _complexService.CreateComplexByOwnerAsync(createComplexDto, ownerId);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, ApiResponse<ComplexDto>.Ok(created, "Tạo sân thành công", 201));
         }
@@ -208,15 +202,8 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
         [HasPermission("complex.approve")]
         public async Task<IActionResult> CreateByAdmin([FromBody] CreateComplexByAdminDto createComplexDto)
         {
-            try
-            {
-                var created = await _complexService.CreateComplexByAdminAsync(createComplexDto);
-                return CreatedAtAction(nameof(GetById), new { id = created.Id }, ApiResponse<ComplexDto>.Ok(created, "Tạo sân thành công", 201));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<string>.Fail(ex.Message, 400));
-            }
+            var created = await _complexService.CreateComplexByAdminAsync(createComplexDto);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, ApiResponse<ComplexDto>.Ok(created, "Tạo sân thành công", 201));
         }
 
         // Cập nhật Complex
@@ -250,32 +237,26 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
         [HasPermission("complex.approve")]
         public async Task<IActionResult> Approve(int id)
         {
-            try
-            {
-                await _complexService.ApproveComplexAsync(id);
-                return Ok(ApiResponse<string>.Ok("", "Phê duyệt sân thành công"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<string>.Fail(ex.Message, 400));
-            }
+            await _complexService.ApproveComplexAsync(id);
+            return Ok(ApiResponse<string>.Ok("", "Phê duyệt sân thành công"));
         }
 
         // Từ chối Complex
-        // [Description("")]
         [HttpPatch("{id}/reject")]
         [HasPermission("complex.approve")]
         public async Task<IActionResult> Reject(int id)
         {
-            try
-            {
-                await _complexService.RejectComplexAsync(id);
-                return Ok(ApiResponse<string>.Ok("", "Từ chối sân thành công"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<string>.Fail(ex.Message, 400));
-            }
+            await _complexService.RejectComplexAsync(id);
+            return Ok(ApiResponse<string>.Ok("", "Từ chối sân thành công"));
+        }
+
+        // Helper method to get userId from JWT claims
+        private int GetUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                throw new UnauthorizedAccessException("Không thể xác thực user");
+            return userId;
         }
     }
 }

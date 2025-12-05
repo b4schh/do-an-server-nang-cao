@@ -9,6 +9,7 @@ namespace FootballField.API.Modules.ReviewManagement.Services
         Task<IEnumerable<ReviewDto>> GetReviewsByFieldIdAsync(int fieldId);
         Task<IEnumerable<ReviewDto>> GetReviewsByComplexIdAsync(int complexId);
         Task<IEnumerable<ReviewDto>> GetMyReviewsAsync(int customerId);
+        Task<ReviewDto?> GetReviewByBookingIdAsync(int bookingId, int customerId);
         Task<double> GetAverageRatingByFieldIdAsync(int fieldId);
         Task<double> GetAverageRatingByComplexIdAsync(int complexId);
         Task<ReviewDto> CreateReviewAsync(int customerId, CreateReviewDto createReviewDto);

@@ -7,6 +7,8 @@ using FootballField.API.Modules.ReviewManagement.Dtos;
 using FootballField.API.Modules.ReviewManagement.Entities;
 using FootballField.API.Modules.UserManagement.Dtos;
 using FootballField.API.Modules.UserManagement.Entities;
+using FootballField.API.Modules.LocationManagement.Dtos;
+using FootballField.API.Modules.LocationManagement.Entities;
 
 namespace FootballField.API.Database
 {
@@ -37,7 +39,8 @@ namespace FootballField.API.Database
             CreateMap<Permission, PermissionDto>();
 
             // Complex Mapping
-            CreateMap<Complex, ComplexDto>();
+            CreateMap<Complex, ComplexDto>()
+                .ForMember(dest => dest.MainImageUrl, opt => opt.MapFrom(src => src.ComplexImages.FirstOrDefault(img => img.IsMain) != null ? src.ComplexImages.First(img => img.IsMain).ImageUrl : null));
             CreateMap<Complex, ComplexWithFieldsDto>();
             CreateMap<Complex, ComplexFullDetailsDto>()
                 .ForMember(dest => dest.Fields, opt => opt.Ignore()); // Ignore vì map thủ công trong Service
@@ -87,6 +90,11 @@ namespace FootballField.API.Database
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedAt, opt => opt.Ignore());
+
+            // Location Mapping
+            CreateMap<Province, ProvinceDto>();
+            CreateMap<Province, ProvinceWithWardsDto>();
+            CreateMap<Ward, WardDto>();
         }
     }
 }

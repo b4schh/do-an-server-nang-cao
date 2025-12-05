@@ -65,6 +65,20 @@ namespace FootballField.API.Modules.ReviewManagement.Services
             return reviews.Select(MapToReviewDto).ToList();
         }
 
+        public async Task<ReviewDto?> GetReviewByBookingIdAsync(int bookingId, int customerId)
+        {
+            var review = await _reviewRepository.GetByBookingIdAsync(bookingId);
+            
+            if (review == null)
+                return null;
+            
+            // Verify review belongs to customer (security check)
+            if (review.Booking.CustomerId != customerId)
+                throw new UnauthorizedAccessException("Bạn không có quyền xem đánh giá này");
+            
+            return MapToReviewDto(review);
+        }
+
         public async Task<double> GetAverageRatingByFieldIdAsync(int fieldId)
         {
             return await _reviewRepository.GetAverageRatingByFieldIdAsync(fieldId);
