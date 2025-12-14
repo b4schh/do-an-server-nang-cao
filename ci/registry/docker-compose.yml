@@ -1,0 +1,48 @@
+services:
+  registry:
+    image: registry:2
+    container_name: registry
+    #restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # CORS settings dùng cho việc truy cập registry trực tiếp từ trình duyệt nếu dùng proxy pass thì không cần thiết
+      # REGISTRY_HTTP_HEADERS_Access-Control-Allow-Origin: '["http://localhost:8081"]'
+      REGISTRY_HTTP_HEADERS_Access-Control-Allow-Methods: '["HEAD","GET","OPTIONS","DELETE"]'
+      REGISTRY_HTTP_HEADERS_Access-Control-Allow-Credentials: '["true"]'
+      REGISTRY_HTTP_HEADERS_Access-Control-Allow-Headers: '["Authorization","Accept","Cache-Control","Content-Type"]'
+      REGISTRY_HTTP_HEADERS_Access-Control-Expose-Headers: '["Docker-Content-Digest"]'
+      REGISTRY_STORAGE_DELETE_ENABLED: 'true'
+      # Basic Authentication
+      REGISTRY_AUTH: 'htpasswd'
+      REGISTRY_AUTH_HTPASSWD_REALM: 'Registry Realm'
+      REGISTRY_AUTH_HTPASSWD_PATH: '/auth/htpasswd'
+    volumes:
+      - D:/CODE/do-an-server-nang-cao/ci/registry/registry-data:/var/lib/registry
+      - D:/CODE/do-an-server-nang-cao/ci/registry/auth:/auth
+
+  ui:
+    image: joxit/docker-registry-ui:latest
+    container_name: registry-ui
+    #restart: unless-stopped
+    depends_on:
+      - registry
+    ports:
+      - "8081:80"
+    environment:
+      - SINGLE_REGISTRY=true
+      - REGISTRY_TITLE=Docker Registry UI (with Auth)
+      # Sử dụng proxy pass để kết nối đến registry nội bộ
+      - NGINX_PROXY_PASS_URL=http://registry:5000
+      # Trường hợp để public registry, sử dụng dòng dưới thay cho dòng trên
+      # - REGISTRY_URL=http://localhost:5000
+      - PULL_URL=localhost:5000
+      # Enable delete buttons in UI (registry must also allow delete)
+      - DELETE_IMAGES=true
+      - SHOW_CONTENT_DIGEST=true
+      # Authentication - false means UI will prompt for credentials
+      - REGISTRY_SECURED=true
+      - CATALOG_MIN_BRANCHES=1
+      - CATALOG_MAX_BRANCHES=1
+      - TAGLIST_PAGE_SIZE=100
+      - CATALOG_ELEMENTS_LIMIT=1000

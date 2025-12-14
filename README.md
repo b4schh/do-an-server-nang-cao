@@ -75,7 +75,7 @@ dotnet restore
 dotnet ef database update
 
 # Nếu cần tạo migration mới
-dotnet ef migrations add MigrationName
+dotnet ef migrations add MigrationName --output-dir Database/Migrations --project . --startup-project .
 ```
 
 ### 7. Chạy ứng dụng
@@ -117,3 +117,5 @@ Dự án có sẵn dữ liệu mẫu được tự động seed khi chạy lần
 - 3 cụm sân bóng
 - 12 sân bóng (4-5 sân mỗi cụm)
 - 60 time slots (5 slots/sân)
+
+test CI/CD

@@ -1,81 +1,178 @@
-using FootballField.API.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Data;
+using System.Security.Claims;
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Any;
-using FootballField.API.Middlewares;
-using FootballField.API.DbContexts;
-using FootballField.API.Mappings;
-using FootballField.API.Repositories.Interfaces;
-using FootballField.API.Repositories.Implements;
-using FootballField.API.Services.Interfaces;
-using FootballField.API.Services.Implements;
-using Minio;
-using FootballField.API.Storage;
 using Microsoft.AspNetCore.Http.Features;
-using FootballField.API.BackgroundJobs;
 using System.Globalization;
+using Minio;
+using Serilog;
+using Serilog.Sinks.MSSqlServer;
+using Serilog.Events;
+using Serilog.Context;
+using FootballField.API.Modules.AIManagement;
+
+// Shared Components
+using FootballField.API.Shared.Utils;
+using FootballField.API.Shared.Middlewares;
+using FootballField.API.Shared.Storage;
+
+// Database
+using FootballField.API.Database;
+
+// Module Registrations
+using FootballField.API.Modules.AuthManagement;
+using FootballField.API.Modules.UserManagement;
+using FootballField.API.Modules.ComplexManagement;
+using FootballField.API.Modules.FieldManagement;
+using FootballField.API.Modules.BookingManagement;
+using FootballField.API.Modules.ReviewManagement;
+using FootballField.API.Modules.NotificationManagement;
+using FootballField.API.Modules.OwnerSettingsManagement;
+using FootballField.API.Modules.LocationManagement;
+using FootballField.API.Modules.LocationManagement.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ========== CẤU HÌNH TIMEZONE ==========
-// Set timezone cho toàn bộ ứng dụng
-string timeZoneId =
-    OperatingSystem.IsWindows()
-        ? "SE Asia Standard Time"
-        : "Asia/Ho_Chi_Minh";
+// ========== CẤU HÌNH SERILOG ==========
+// Configure Serilog with connection string from configuration
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-Environment.SetEnvironmentVariable("TZ", timeZoneId);
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .MinimumLevel.Information()
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .Enrich.WithProcessId()
+    .Enrich.WithThreadId()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(
+        path: "logs/system-.log",
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}",
+        retainedFileCountLimit: 30)
+    .WriteTo.MSSqlServer(
+        connectionString: connectionString,
+        restrictedToMinimumLevel: LogEventLevel.Warning, // Chỉ lưu Warning, Error, Fatal vào DB
+        sinkOptions: new MSSqlServerSinkOptions
+        {
+            TableName = "SYSTEM_LOG",
+            AutoCreateSqlTable = false,
+            SchemaName = "dbo"
+        },
+        columnOptions: GetSqlColumnOptions())
+    .CreateLogger();
+
+static ColumnOptions GetSqlColumnOptions()
+{
+    var columnOptions = new ColumnOptions();
+
+    // Clear default columns
+    columnOptions.Store.Clear();
+
+    // Only add the columns that exist in SYSTEM_LOG table
+    columnOptions.Store.Add(StandardColumn.Level);
+    columnOptions.Store.Add(StandardColumn.Message);
+    columnOptions.Store.Add(StandardColumn.TimeStamp);
+
+    // Map to your table columns (lowercase with underscore)
+    columnOptions.Level.ColumnName = "log_level";
+    columnOptions.Level.StoreAsEnum = false;
+
+    columnOptions.Message.ColumnName = "message";
+
+    columnOptions.TimeStamp.ColumnName = "created_at";
+    columnOptions.TimeStamp.ConvertToUtc = false;
+
+    // Add Source as additional column with custom value from property
+    columnOptions.AdditionalColumns = new System.Collections.ObjectModel.Collection<SqlColumn>
+    {
+        new SqlColumn
+        {
+            ColumnName = "source",
+            PropertyName = "SourceContext",
+            DataType = System.Data.SqlDbType.NVarChar,
+            DataLength = 100,
+            AllowNull = true
+        }
+    };
+
+    columnOptions.DisableTriggers = true;
+
+    return columnOptions;
+}
+
+// Use Serilog for all logging
+builder.Host.UseSerilog();
+builder.Logging.ClearProviders();
+
+// ========== CẤU HÌNH TIMEZONE ==========
+// Set timezone cho toàn bộ ứng dụng, safe fallback
+TimeZoneInfo vietnamTimeZone;
+try
+{
+    string timeZoneId = OperatingSystem.IsWindows() ? "SE Asia Standard Time" : "Asia/Ho_Chi_Minh";
+    vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+}
+catch (Exception ex)
+{
+    // fallback to UTC if not found on platform
+    Log.Warning(ex, "Timezone id not found, fallback to UTC");
+    vietnamTimeZone = TimeZoneInfo.Utc;
+}
+Environment.SetEnvironmentVariable("TZ", vietnamTimeZone.Id);
 
 // Đặt culture mặc định cho ứng dụng
 CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("vi-VN");
 CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("vi-VN");
 
-// Đọc Connection String từ appsettings.json
-
-// Đọc Connection String từ appsettings.json
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// Đọc Connection String từ appsettings.json (already read above for Serilog)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
 // ========== ĐĂNG KÝ AUTOMAPPER ==========
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// ========== ĐĂNG KÝ REPOSITORIES ==========
-builder.Services.AddScoped<IBookingRepository, BookingRepository>();
-builder.Services.AddScoped<IComplexRepository, ComplexRepository>();
-builder.Services.AddScoped<IComplexImageRepository, ComplexImageRepository>();
-builder.Services.AddScoped<IFieldRepository, FieldRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
-builder.Services.AddSingleton<ISseRepository, SseRepository>();
+// ========== ĐĂNG KÝ MODULE DEPENDENCIES ==========
+// Register all modules with their services and repositories
+builder.Services.AddAuthModule();
+builder.Services.AddUserModule();
+builder.Services.AddComplexManagementModule();
+builder.Services.AddFieldManagementModule();
+builder.Services.AddBookingModule();
+builder.Services.AddReviewModule();
+builder.Services.AddNotificationModule();
+builder.Services.AddOwnerSettingsModule();
+builder.Services.AddLocationManagementModule();
 
-// ========== ĐĂNG KÝ SERVICES ==========
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IBookingService, BookingService>();
-builder.Services.AddScoped<IComplexService, ComplexService>();
-builder.Services.AddScoped<IComplexImageService, ComplexImageService>();
-builder.Services.AddScoped<IFieldService, FieldService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<ITimeSlotService, TimeSlotService>();
-builder.Services.AddScoped<INotificationService, NotificationService>();
-
-// ========== ĐĂNG KÝ BACKGROUND SERVICES ==========
-builder.Services.AddHostedService<BookingExpirationBackgroundService>();
+// NOTE: AddAIModule should NOT resolve scoped services from root. Register AI module AFTER other modules.
+builder.Services.AddAIModule(builder.Configuration);
 
 // ========== ĐĂNG KÝ UTILITIES ==========
 builder.Services.AddScoped<JwtHelper>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient(); // For LocationSeeder
 
 builder.Services.AddSingleton(vietnamTimeZone);
+// Register AI plugin as scoped so it can use IHttpContextAccessor and request-scoped services
+
+
+
 
 // ========== CẤU HÌNH JWT AUTHENTICATION ==========
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
 var issuer = jwtSettings["Issuer"];
 var audience = jwtSettings["Audience"];
+
+// (Optional) show PII for identity model in dev for deeper debugging - comment out in production
+// Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
 
 builder.Services.AddAuthentication(options =>
 {
@@ -84,6 +181,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.RequireHttpsMetadata = false; // dev ok; set true for prod
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -95,7 +193,6 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
         ClockSkew = TimeSpan.Zero
     };
-    
 });
 
 builder.Services.AddAuthorization();
@@ -122,7 +219,7 @@ builder.Services.AddSwaggerGen(c =>
     // Thêm định nghĩa bảo mật JWT
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header. Just enter your token below - no need for 'Bearer' prefix",
+        Description = "JWT Authorization header. Enter 'Bearer {token}' (without quotes).",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
@@ -162,22 +259,28 @@ builder.Services.Configure<FormOptions>(o =>
     o.MultipartBodyLengthLimit = 20_000_000;
 });
 
-// Đăng ký MinioClient qua DI
+// ========== Đăng ký MinioClient qua DI (validate config) ==========
 builder.Services.AddSingleton<IMinioClient>(sp =>
 {
     var cfg = sp.GetRequiredService<IConfiguration>().GetSection("Minio");
-    var endpoint = cfg["Endpoint"]!;
-    var accessKey = cfg["AccessKey"]!;
-    var secretKey = cfg["SecretKey"]!;
-    var withSSL = bool.TryParse(cfg["WithSSL"], out var ssl) && ssl;
+    var endpoint = cfg["Endpoint"];
+    var accessKey = cfg["AccessKey"];
+    var secretKey = cfg["SecretKey"];
+    var withSslRaw = cfg["WithSSL"];
 
-    var client = new MinioClient()
+    if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(accessKey) || string.IsNullOrWhiteSpace(secretKey))
+    {
+        // Fail fast during startup so we know config is missing
+        throw new InvalidOperationException("Minio configuration is missing. Please set Minio:Endpoint, Minio:AccessKey, Minio:SecretKey in configuration.");
+    }
+
+    var clientBuilder = new MinioClient()
         .WithEndpoint(endpoint)
         .WithCredentials(accessKey, secretKey);
 
-    if (withSSL) client = client.WithSSL();
+    if (bool.TryParse(withSslRaw, out var withSSL) && withSSL) clientBuilder = clientBuilder.WithSSL();
 
-    return client.Build();
+    return clientBuilder.Build();
 });
 
 // Đăng ký storage service
@@ -197,27 +300,65 @@ builder.Services.AddCors(options =>
 // Build app
 var app = builder.Build();
 
-// Áp dụng Migration tự động
-using (var scope = app.Services.CreateScope())
+// Use Serilog request logging
+app.UseSerilogRequestLogging();
+
+// Áp dụng Migration tự động và Seeding (safe, supports sync/async SeedData)
+await RunMigrationsAndSeedAsync(app.Services);
+
+static async Task RunMigrationsAndSeedAsync(IServiceProvider services)
 {
+    using var scope = services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    
+
     try
     {
-        if (!db.Database.CanConnect())
+        // Always attempt migrate (wrapped in try/catch)
+        await db.Database.MigrateAsync();
+        Log.Information("Database migrated");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Database migration failed");
+    }
+
+    try
+    {
+        // Try to call SeedData; support async or sync method
+        var seedMethod = db.GetType().GetMethod("SeedData");
+        if (seedMethod != null)
         {
-            db.Database.Migrate();
+            var result = seedMethod.Invoke(db, null);
+            if (result is System.Threading.Tasks.Task t)
+            {
+                await t;
+            }
+            Log.Information("Database seeded successfully (via SeedData)");
+        }
+        else
+        {
+            Log.Information("No SeedData method found on ApplicationDbContext");
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[Warning] Database migration skipped: {ex.Message}");
+        Log.Error(ex, "Database seeding failed");
     }
 
-    // Seed dữ liệu mẫu
-    db.SeedData();
+    // Seed location data (Province & Ward)
+    try
+    {
+        var locationSeeder = scope.ServiceProvider.GetRequiredService<LocationSeeder>();
+        await locationSeeder.SeedLocationsAsync();
+        Log.Information("Location data seeded successfully");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Location seeding failed");
+    }
 }
 
+// Use exception middleware early to catch downstream errors
 app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -232,10 +373,47 @@ app.UseHttpsRedirection();
 
 app.UseRouting();
 
+// Authentication must run before we push UserId property for logging
 app.UseAuthentication();
-app.UseAuthorization();
 
+// Push UserId into Serilog context per-request (after authentication). Use using to pop property automatically.
+app.Use(async (context, next) =>
+{
+    // Resolve user id from claims if possible (cover common claim names)
+    string? userId = null;
+    try
+    {
+        userId = context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                 ?? context.User?.FindFirst("id")?.Value
+                 ?? context.User?.FindFirst("sub")?.Value
+                 ?? "anonymous";
+    }
+    catch
+    {
+        userId = "anonymous";
+    }
+
+    using (LogContext.PushProperty("UserId", userId))
+    {
+        await next();
+    }
+});
+
+app.UseAuthorization();
 
 app.MapControllers();
 
-app.Run();
+try
+{
+    Log.Information("Starting Football Field Booking API");
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

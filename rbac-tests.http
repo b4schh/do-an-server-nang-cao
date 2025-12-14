@@ -1,0 +1,83 @@
+### RBAC Testing
+@baseUrl = http://localhost:8083
+@adminToken = 
+@ownerToken = 
+@customerToken = 
+
+### 1. Login as Admin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@gmail.com",
+  "password": "Admin@123"
+}
+
+### 2. Login as Owner
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "owner1@gmail.com",
+  "password": "Owner@123"
+}
+
+### 3. Login as Customer (will create one if not exists)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "customer_test@gmail.com",
+  "password": "Customer@123",
+  "fullName": "Customer Test RBAC"
+}
+
+### 4. Test Admin Permission - View All Users (should work with admin token)
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{adminToken}}
+
+### 5. Test Owner trying to View All Users (should get 403 Forbidden)
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{ownerToken}}
+
+### 6. Test Customer trying to View All Users (should get 403 Forbidden)
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{customerToken}}
+
+### 7. Test Customer - View Own Profile (should work)
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{customerToken}}
+
+### 8. Test Owner - Create Complex (should work with complex.create permission)
+POST {{baseUrl}}/api/complexes/owner
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "Test RBAC Complex",
+  "address": "123 Test Street",
+  "description": "Testing RBAC permissions",
+  "latitude": 10.762622,
+  "longitude": 106.660172
+}
+
+### 9. Test Customer trying to Create Complex (should get 403 Forbidden)
+POST {{baseUrl}}/api/complexes/owner
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "name": "Customer Complex",
+  "address": "123 Test Street",
+  "description": "Should fail",
+  "latitude": 10.762622,
+  "longitude": 106.660172
+}
+
+### 10. Test Admin - Force Complete Booking (admin-only permission)
+POST {{baseUrl}}/api/admin/bookings/1/complete
+Authorization: Bearer {{adminToken}}
+
+### 11. Test Owner trying Admin endpoint (should fail)
+POST {{baseUrl}}/api/admin/bookings/1/complete
+Authorization: Bearer {{ownerToken}}
