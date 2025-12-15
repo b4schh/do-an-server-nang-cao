@@ -11,7 +11,7 @@ services:
       Minio__SecretKey: "${MINIO_ROOT_PASSWORD_PROD}"
       Minio__BucketName: "${MINIO_BUCKET_NAME_PROD}"
       Minio__WithSSL: "false"
-      Minio__BaseUrl: "http://localhost:8080/media"
+      Minio__BaseUrl: "http://localhost:8888/media"
     depends_on:
       - db
       - minio

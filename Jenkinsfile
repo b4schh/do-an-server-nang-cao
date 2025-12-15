@@ -66,8 +66,26 @@ pipeline {
                 withCredentials([file(credentialsId: 'env-prod-file', variable: 'ENV_PROD')]) {
                     sh '''
                         cp $ENV_PROD .env.prod
+                        
+                        # Stop existing containers
                         docker compose -f docker-compose.prod.yml --env-file .env.prod down || true
-                        docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+                        
+                        # Pull images with retry (skip if timeout persists)
+                        for i in 1 2 3; do
+                            echo "Attempt $i to pull images..."
+                            if docker compose -f docker-compose.prod.yml --env-file .env.prod pull 2>/dev/null; then
+                                echo "Images pulled successfully"
+                                break
+                            fi
+                            if [ $i -eq 3 ]; then
+                                echo "Pull failed after 3 attempts, using existing images..."
+                            else
+                                echo "Pull failed, retrying in 5 seconds..."
+                                sleep 5
+                            fi
+                        done
+                        
+                        # Start containers (will use local images if pull failed)
                         docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --force-recreate
                     '''
                 }
