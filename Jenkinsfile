@@ -3,26 +3,46 @@ pipeline {
 
     environment {
         REGISTRY_URL = 'localhost:5000'
-        IMAGE_NAME = 'football-api'
+        IMAGE_NAME   = 'football-api'
+        // IMAGE_TAG sẽ được set ở stage Init
     }
 
     stages {
+
+        stage('Init') {
+            steps {
+                script {
+                    // Format: 20251215-093045
+                    IMAGE_TAG = sh(
+                        script: "date +%Y%m%d-%H%M%S",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Build image tag: ${IMAGE_TAG}"
+                }
+            }
+        }
+
         stage('Checkout') {
             steps {
                 checkout scm
-                sh 'ls -al'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME} -f Dockerfile .'
+                sh '''
+                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -f Dockerfile .
+                '''
             }
         }
 
         stage('Tag Image') {
             steps {
-                sh 'docker tag ${IMAGE_NAME} ${REGISTRY_URL}/${IMAGE_NAME}:latest'
+                sh '''
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${REGISTRY_URL}/${IMAGE_NAME}:latest
+                '''
             }
         }
 
@@ -32,26 +52,33 @@ pipeline {
             }
         }
 
-        stage('Push Image to Registry') {
+        stage('Push Image') {
             steps {
-                sh 'docker push ${REGISTRY_URL}/${IMAGE_NAME}:latest'
+                sh '''
+                    docker push ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${REGISTRY_URL}/${IMAGE_NAME}:latest
+                '''
             }
         }
 
         stage('Deploy') {
             steps {
-                sh '''
-                    docker compose -f docker-compose.prod.yml --env-file .env.prod down
-                    docker compose -f docker-compose.prod.yml --env-file .env.prod pull
-                    docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --force-recreate
-                '''
+                withCredentials([file(credentialsId: 'env-prod-file', variable: 'ENV_PROD')]) {
+                    sh '''
+                        cp $ENV_PROD .env.prod
+                        docker compose -f docker-compose.prod.yml --env-file .env.prod down || true
+                        docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+                        docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --force-recreate
+                    '''
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'Deployment to Production completed successfully!'
+            echo "Deployment completed successfully!"
+            echo "Image pushed: ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
         }
         failure {
             echo 'Deployment failed! Please check the logs.'
