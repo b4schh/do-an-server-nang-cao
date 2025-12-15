@@ -12,5 +12,9 @@ namespace FootballField.API.Modules.FieldManagement.Services
         Task<FieldDto> CreateFieldAsync(CreateFieldDto createFieldDto);
         Task UpdateFieldAsync(int id, UpdateFieldDto updateFieldDto);
         Task SoftDeleteFieldAsync(int id);
+        
+        // Bulk operations
+        Task<FieldDto> CloneFieldAsync(int fieldId, CloneFieldDto cloneFieldDto);
+        Task BatchAddTimeSlotsAsync(BatchAddTimeSlotsDto batchAddTimeSlotsDto);
     }
 }

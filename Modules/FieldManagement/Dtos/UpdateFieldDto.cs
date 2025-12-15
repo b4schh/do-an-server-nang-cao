@@ -12,9 +12,6 @@ namespace FootballField.API.Modules.FieldManagement.Dtos
         [Required(ErrorMessage = "Loại sân là bắt buộc")]
         public string FieldType { get; set; } = null!;
 
-        [Range(0, double.MaxValue, ErrorMessage = "Giá phải lớn hơn 0")]
-        public int PricePerHour { get; set; }
-
         public string? Description { get; set; }
 
         public bool IsActive { get; set; }

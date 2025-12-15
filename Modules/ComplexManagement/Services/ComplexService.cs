@@ -3,9 +3,11 @@ using AutoMapper;
 using FootballField.API.Modules.ComplexManagement.Dtos;
 using FootballField.API.Modules.FieldManagement.Dtos;
 using FootballField.API.Modules.ComplexManagement.Repositories;
+using FootballField.API.Modules.FieldManagement.Repositories;
 using FootballField.API.Modules.BookingManagement.Repositories;
 using FootballField.API.Modules.UserManagement.Repositories;
 using FootballField.API.Modules.ComplexManagement.Entities;
+using FootballField.API.Modules.FieldManagement.Entities;
 using FootballField.API.Modules.UserManagement.Entities;
 using FootballField.API.Shared.Utils;
 
@@ -14,6 +16,8 @@ namespace FootballField.API.Modules.ComplexManagement.Services
     public class ComplexService : IComplexService
     {
         private readonly IComplexRepository _complexRepository;
+        private readonly IFieldRepository _fieldRepository;
+        private readonly ITimeSlotRepository _timeSlotRepository;
         private readonly IUserRepository _userRepository;
         private readonly IBookingRepository _bookingRepository;
         private readonly IMapper _mapper;
@@ -21,12 +25,16 @@ namespace FootballField.API.Modules.ComplexManagement.Services
 
         public ComplexService(
             IComplexRepository complexRepository,
+            IFieldRepository fieldRepository,
+            ITimeSlotRepository timeSlotRepository,
             IUserRepository userRepository,
             IBookingRepository bookingRepository,
             IMapper mapper,
             ILogger<ComplexService> logger)
         {
             _complexRepository = complexRepository;
+            _fieldRepository = fieldRepository;
+            _timeSlotRepository = timeSlotRepository;
             _userRepository = userRepository;
             _bookingRepository = bookingRepository;
             _mapper = mapper;
@@ -465,6 +473,87 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             }
 
             return result;
+        }
+
+        public async Task<ComplexDto> BulkSetupComplexAsync(BulkSetupComplexDto bulkSetupDto, int ownerId)
+        {
+            _logger.LogInformation($"[BulkSetup] Starting bulk setup for owner {ownerId}");
+
+            // Validate owner role
+            var isOwner = await ValidateOwnerRoleAsync(ownerId);
+            if (!isOwner)
+                throw new InvalidOperationException("Chỉ Owner mới có thể tạo cụm sân");
+
+            // 1. Create Complex
+            var complex = _mapper.Map<Complex>(bulkSetupDto.Complex);
+            complex.OwnerId = ownerId;
+            complex.Status = ComplexStatus.Pending;
+            complex.IsActive = true;
+            complex.IsDeleted = false;
+            complex.CreatedAt = DateTime.Now;
+            complex.UpdatedAt = DateTime.Now;
+
+            await _complexRepository.AddAsync(complex);
+            _logger.LogInformation($"[BulkSetup] Complex created with ID: {complex.Id}");
+
+            // 2. Create Fields with TimeSlots
+            foreach (var fieldDto in bulkSetupDto.Fields)
+            {
+                var field = new Field
+                {
+                    ComplexId = complex.Id,
+                    Name = fieldDto.Name,
+                    FieldSize = fieldDto.FieldType,
+                    IsActive = true,
+                    IsDeleted = false,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
+
+                await _fieldRepository.AddAsync(field);
+                _logger.LogInformation($"[BulkSetup] Field created: {field.Name} (ID: {field.Id})");
+
+                // 3. Create TimeSlots for this Field
+                List<TimeSlot> timeSlotsToCreate = new();
+
+                // Use custom timeslots if provided, otherwise use template
+                if (fieldDto.CustomTimeSlots != null && fieldDto.CustomTimeSlots.Any())
+                {
+                    timeSlotsToCreate = fieldDto.CustomTimeSlots.Select(ts => new TimeSlot
+                    {
+                        FieldId = field.Id,
+                        StartTime = ts.StartTime,
+                        EndTime = ts.EndTime,
+                        Price = ts.Price,
+                        IsActive = true,
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
+                    }).ToList();
+                }
+                else if (bulkSetupDto.ApplyTemplateToAllFields && bulkSetupDto.TimeSlotTemplate != null)
+                {
+                    timeSlotsToCreate = bulkSetupDto.TimeSlotTemplate.TimeSlots.Select(ts => new TimeSlot
+                    {
+                        FieldId = field.Id,
+                        StartTime = ts.StartTime,
+                        EndTime = ts.EndTime,
+                        Price = ts.Price,
+                        IsActive = true,
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
+                    }).ToList();
+                }
+
+                if (timeSlotsToCreate.Any())
+                {
+                    await _timeSlotRepository.AddRangeAsync(timeSlotsToCreate);
+                    _logger.LogInformation($"[BulkSetup] Created {timeSlotsToCreate.Count} timeslots for field {field.Name}");
+                }
+            }
+
+            _logger.LogInformation($"[BulkSetup] Completed: Complex ID {complex.Id}, {bulkSetupDto.Fields.Count} fields created");
+
+            return _mapper.Map<ComplexDto>(complex);
         }
     }
 }

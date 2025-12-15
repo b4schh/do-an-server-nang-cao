@@ -313,7 +313,7 @@ async Task SeedDatabaseAsync(IServiceProvider services)
     // Seed dữ liệu mẫu
     try
     {
-        db.SeedData();
+        db.SeedFullData();
         Log.Information("Database seeded successfully");
     }
     catch (Exception ex)

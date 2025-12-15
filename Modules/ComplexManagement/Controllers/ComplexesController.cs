@@ -250,6 +250,17 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
             return Ok(ApiResponse<string>.Ok("", "Từ chối sân thành công"));
         }
 
+        // Bulk Setup: Create complex with fields and timeslots
+        [HttpPost("owner/bulk-setup")]
+        [HasPermission("complex.create")]
+        public async Task<IActionResult> BulkSetup([FromBody] BulkSetupComplexDto bulkSetupDto)
+        {
+            var ownerId = GetUserId();
+            var created = await _complexService.BulkSetupComplexAsync(bulkSetupDto, ownerId);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, 
+                ApiResponse<ComplexDto>.Ok(created, $"Tạo thành công cụm sân với {bulkSetupDto.Fields.Count} sân", 201));
+        }
+
         // Helper method to get userId from JWT claims
         private int GetUserId()
         {

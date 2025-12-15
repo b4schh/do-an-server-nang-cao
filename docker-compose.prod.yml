@@ -1,48 +1,54 @@
 services:
   api:
-    image: localhost:5000/football-api:latest
+    image: ${REGISTRY_URL}/football-api:latest
     ports:
-      - "8082:8080"
+      - "${API_PORT_PROD}:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: "Production"
-      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=DoAnServerNangCao;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;"
+      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=${DB_NAME_PROD};User Id=sa;Password=${DB_PASSWORD_PROD};TrustServerCertificate=True;"
       Minio__Endpoint: "minio:9000"
-      Minio__AccessKey: "admin"
-      Minio__SecretKey: "admin123"
-      Minio__BucketName: "football-field-booking-media"
+      Minio__AccessKey: "${MINIO_ROOT_USER_PROD}"
+      Minio__SecretKey: "${MINIO_ROOT_PASSWORD_PROD}"
+      Minio__BucketName: "${MINIO_BUCKET_NAME_PROD}"
+      Minio__WithSSL: "false"
+      Minio__BaseUrl: "http://localhost:8080/media"
     depends_on:
       - db
       - minio
 
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "${DB_PORT_PROD}:1433"
     environment:
-      SA_PASSWORD: "YourStrong!Passw0rd"
+      SA_PASSWORD: "${DB_PASSWORD_PROD}"
       ACCEPT_EULA: "Y"
+      TZ: "Asia/Ho_Chi_Minh"
     volumes:
-      - sqlserver_data:/var/opt/mssql
+      - sqlserver_data_prod:/var/opt/mssql
 
   minio:
     image: minio/minio
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: admin123
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER_PROD}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD_PROD}
     volumes:
-      - D:/MinIO/minio-data-do-an-server:/data
+      - minio_data_prod:/data
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT_PROD}:9000"
+      - "${MINIO_CONSOLE_PORT_PROD}:9001"
 
   nginx:
     # image: nginx:latest
     build: ./ci/nginx
     ports:
-      - "80:80"
+      - "${NGINX_PORT_PROD}:80"
     # volumes:
     #   - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api
 
 volumes:
-  sqlserver_data:
+  sqlserver_data_prod:
+  minio_data_prod:

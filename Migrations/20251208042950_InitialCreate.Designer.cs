@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FootballField.API.Database.Migrations
+namespace FootballField.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251125042116_RemoveDeprecatedRoleColumn")]
-    partial class RemoveDeprecatedRoleColumn
+    [Migration("20251208042950_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -289,6 +289,9 @@ namespace FootballField.API.Database.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
+                    b.Property<int?>("FieldId")
+                        .HasColumnType("int");
+
                     b.Property<int>("UserId")
                         .HasColumnType("int")
                         .HasColumnName("user_id");
@@ -296,6 +299,8 @@ namespace FootballField.API.Database.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ComplexId");
+
+                    b.HasIndex("FieldId");
 
                     b.HasIndex("UserId", "ComplexId")
                         .IsUnique();
@@ -426,6 +431,103 @@ namespace FootballField.API.Database.Migrations
                         {
                             t.HasCheckConstraint("CK_TimeSlot_TimeRange", "start_time < end_time");
                         });
+                });
+
+            modelBuilder.Entity("FootballField.API.Modules.LocationManagement.Entities.Province", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Code")
+                        .HasColumnType("int")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Codename")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("codename");
+
+                    b.Property<string>("DivisionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("division_type");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Province_Code");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Provinces", "location");
+                });
+
+            modelBuilder.Entity("FootballField.API.Modules.LocationManagement.Entities.Ward", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Code")
+                        .HasColumnType("int")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Codename")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("codename");
+
+                    b.Property<string>("DivisionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("division_type");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("ProvinceCode")
+                        .HasColumnType("int")
+                        .HasColumnName("province_code");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Ward_Code");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("ProvinceCode")
+                        .HasDatabaseName("IX_Ward_ProvinceCode");
+
+                    b.ToTable("Wards", "location");
                 });
 
             modelBuilder.Entity("FootballField.API.Modules.NotificationManagement.Entities.Notification", b =>
@@ -790,6 +892,7 @@ namespace FootballField.API.Database.Migrations
 
                     b.Property<string>("Module")
                         .HasMaxLength(50)
+                        .IsUnicode(true)
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("module");
 
@@ -811,6 +914,57 @@ namespace FootballField.API.Database.Migrations
                         .IsUnique();
 
                     b.ToTable("PERMISSION", (string)null);
+                });
+
+            modelBuilder.Entity("FootballField.API.Modules.UserManagement.Entities.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsRevoked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_revoked");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("token");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_RefreshToken_UserId");
+
+                    b.ToTable("REFRESH_TOKEN", (string)null);
                 });
 
             modelBuilder.Entity("FootballField.API.Modules.UserManagement.Entities.Role", b =>
@@ -843,6 +997,7 @@ namespace FootballField.API.Database.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
+                        .IsUnicode(true)
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("name");
 
@@ -945,10 +1100,6 @@ namespace FootballField.API.Database.Migrations
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)")
                         .HasColumnName("phone");
-
-                    b.Property<byte?>("Role")
-                        .HasColumnType("tinyint")
-                        .HasColumnName("role");
 
                     b.Property<byte>("Status")
                         .HasColumnType("tinyint")
@@ -1115,11 +1266,15 @@ namespace FootballField.API.Database.Migrations
 
             modelBuilder.Entity("FootballField.API.Modules.ComplexManagement.Entities.FavoriteComplex", b =>
                 {
-                    b.HasOne("FootballField.API.Modules.FieldManagement.Entities.Field", "Field")
-                        .WithMany("FavoritedBy")
+                    b.HasOne("FootballField.API.Modules.ComplexManagement.Entities.Complex", "Complex")
+                        .WithMany()
                         .HasForeignKey("ComplexId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("FootballField.API.Modules.FieldManagement.Entities.Field", null)
+                        .WithMany("FavoritedBy")
+                        .HasForeignKey("FieldId");
 
                     b.HasOne("FootballField.API.Modules.UserManagement.Entities.User", "User")
                         .WithMany("FavoriteComplexes")
@@ -1127,7 +1282,7 @@ namespace FootballField.API.Database.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Field");
+                    b.Navigation("Complex");
 
                     b.Navigation("User");
                 });
@@ -1152,6 +1307,18 @@ namespace FootballField.API.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Field");
+                });
+
+            modelBuilder.Entity("FootballField.API.Modules.LocationManagement.Entities.Ward", b =>
+                {
+                    b.HasOne("FootballField.API.Modules.LocationManagement.Entities.Province", "Province")
+                        .WithMany("Wards")
+                        .HasForeignKey("ProvinceCode")
+                        .HasPrincipalKey("Code")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Province");
                 });
 
             modelBuilder.Entity("FootballField.API.Modules.NotificationManagement.Entities.Notification", b =>
@@ -1222,6 +1389,17 @@ namespace FootballField.API.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Review");
+                });
+
+            modelBuilder.Entity("FootballField.API.Modules.UserManagement.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("FootballField.API.Modules.UserManagement.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FootballField.API.Modules.UserManagement.Entities.RolePermission", b =>
@@ -1304,6 +1482,11 @@ namespace FootballField.API.Database.Migrations
             modelBuilder.Entity("FootballField.API.Modules.FieldManagement.Entities.TimeSlot", b =>
                 {
                     b.Navigation("Bookings");
+                });
+
+            modelBuilder.Entity("FootballField.API.Modules.LocationManagement.Entities.Province", b =>
+                {
+                    b.Navigation("Wards");
                 });
 
             modelBuilder.Entity("FootballField.API.Modules.ReviewManagement.Entities.Review", b =>

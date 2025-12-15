@@ -186,8 +186,8 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasOne(e => e.Field)
-                .WithMany(e => e.FavoritedBy)
+            entity.HasOne(e => e.Complex)
+                .WithMany()
                 .HasForeignKey(e => e.ComplexId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

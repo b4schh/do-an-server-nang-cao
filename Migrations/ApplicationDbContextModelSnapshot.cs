@@ -4,19 +4,16 @@ using FootballField.API.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FootballField.API.Database.Migrations
+namespace FootballField.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251202120732_AddRefreshTokenTable")]
-    partial class AddRefreshTokenTable
+    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -289,6 +286,9 @@ namespace FootballField.API.Database.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 
+                    b.Property<int?>("FieldId")
+                        .HasColumnType("int");
+
                     b.Property<int>("UserId")
                         .HasColumnType("int")
                         .HasColumnName("user_id");
@@ -296,6 +296,8 @@ namespace FootballField.API.Database.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ComplexId");
+
+                    b.HasIndex("FieldId");
 
                     b.HasIndex("UserId", "ComplexId")
                         .IsUnique();
@@ -426,6 +428,103 @@ namespace FootballField.API.Database.Migrations
                         {
                             t.HasCheckConstraint("CK_TimeSlot_TimeRange", "start_time < end_time");
                         });
+                });
+
+            modelBuilder.Entity("FootballField.API.Modules.LocationManagement.Entities.Province", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Code")
+                        .HasColumnType("int")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Codename")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("codename");
+
+                    b.Property<string>("DivisionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("division_type");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Province_Code");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Provinces", "location");
+                });
+
+            modelBuilder.Entity("FootballField.API.Modules.LocationManagement.Entities.Ward", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Code")
+                        .HasColumnType("int")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Codename")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("codename");
+
+                    b.Property<string>("DivisionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("division_type");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("ProvinceCode")
+                        .HasColumnType("int")
+                        .HasColumnName("province_code");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Ward_Code");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("ProvinceCode")
+                        .HasDatabaseName("IX_Ward_ProvinceCode");
+
+                    b.ToTable("Wards", "location");
                 });
 
             modelBuilder.Entity("FootballField.API.Modules.NotificationManagement.Entities.Notification", b =>
@@ -1164,11 +1263,15 @@ namespace FootballField.API.Database.Migrations
 
             modelBuilder.Entity("FootballField.API.Modules.ComplexManagement.Entities.FavoriteComplex", b =>
                 {
-                    b.HasOne("FootballField.API.Modules.FieldManagement.Entities.Field", "Field")
-                        .WithMany("FavoritedBy")
+                    b.HasOne("FootballField.API.Modules.ComplexManagement.Entities.Complex", "Complex")
+                        .WithMany()
                         .HasForeignKey("ComplexId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("FootballField.API.Modules.FieldManagement.Entities.Field", null)
+                        .WithMany("FavoritedBy")
+                        .HasForeignKey("FieldId");
 
                     b.HasOne("FootballField.API.Modules.UserManagement.Entities.User", "User")
                         .WithMany("FavoriteComplexes")
@@ -1176,7 +1279,7 @@ namespace FootballField.API.Database.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Field");
+                    b.Navigation("Complex");
 
                     b.Navigation("User");
                 });
@@ -1201,6 +1304,18 @@ namespace FootballField.API.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Field");
+                });
+
+            modelBuilder.Entity("FootballField.API.Modules.LocationManagement.Entities.Ward", b =>
+                {
+                    b.HasOne("FootballField.API.Modules.LocationManagement.Entities.Province", "Province")
+                        .WithMany("Wards")
+                        .HasForeignKey("ProvinceCode")
+                        .HasPrincipalKey("Code")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Province");
                 });
 
             modelBuilder.Entity("FootballField.API.Modules.NotificationManagement.Entities.Notification", b =>
@@ -1364,6 +1479,11 @@ namespace FootballField.API.Database.Migrations
             modelBuilder.Entity("FootballField.API.Modules.FieldManagement.Entities.TimeSlot", b =>
                 {
                     b.Navigation("Bookings");
+                });
+
+            modelBuilder.Entity("FootballField.API.Modules.LocationManagement.Entities.Province", b =>
+                {
+                    b.Navigation("Wards");
                 });
 
             modelBuilder.Entity("FootballField.API.Modules.ReviewManagement.Entities.Review", b =>

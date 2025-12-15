@@ -65,7 +65,7 @@ namespace FootballField.API.Database
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
 
             // Timeslot Mapping
-            CreateMap<TimeSlot, TimeSlotDto>();
+            CreateMap<TimeSlot, FootballField.API.Modules.FieldManagement.Dtos.TimeSlotDto>();
             CreateMap<TimeSlot, TimeSlotWithAvailabilityDto>()
                 .ForMember(dest => dest.IsBooked, opt => opt.MapFrom(src => false)); // Default false, sẽ được set trong service nếu cần
             CreateMap<CreateTimeSlotDto, TimeSlot>();

@@ -26,5 +26,11 @@ namespace FootballField.API.Modules.FieldManagement.Repositories
                 .OrderBy(ts => ts.StartTime)
                 .ToListAsync();
         }
+
+        public new async Task AddRangeAsync(IEnumerable<TimeSlot> timeSlots)
+        {
+            await _dbSet.AddRangeAsync(timeSlots);
+            await _context.SaveChangesAsync();
+        }
     }
 }

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FootballField.API.Database.Migrations
+namespace FootballField.API.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -11,6 +11,61 @@ namespace FootballField.API.Database.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "location");
+
+            migrationBuilder.CreateTable(
+                name: "PERMISSION",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    permission_key = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    module = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PERMISSION", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Provinces",
+                schema: "location",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    code = table.Column<int>(type: "int", nullable: false),
+                    name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    codename = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    division_type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Provinces", x => x.id);
+                    table.UniqueConstraint("AK_Provinces_code", x => x.code);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ROLE",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ROLE", x => x.id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "SYSTEM_CONFIG",
                 columns: table => new
@@ -56,7 +111,6 @@ namespace FootballField.API.Database.Migrations
                     email = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     phone = table.Column<string>(type: "nvarchar(15)", maxLength: 15, nullable: true),
                     password = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    role = table.Column<byte>(type: "tinyint", nullable: false),
                     avatar_url = table.Column<string>(type: "varchar(max)", unicode: false, nullable: true),
                     status = table.Column<byte>(type: "tinyint", nullable: false),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
@@ -73,6 +127,56 @@ namespace FootballField.API.Database.Migrations
                         column: x => x.deleted_by,
                         principalTable: "USER",
                         principalColumn: "id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Wards",
+                schema: "location",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    code = table.Column<int>(type: "int", nullable: false),
+                    name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    codename = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    division_type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    province_code = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Wards", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_Wards_Provinces_province_code",
+                        column: x => x.province_code,
+                        principalSchema: "location",
+                        principalTable: "Provinces",
+                        principalColumn: "code",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ROLE_PERMISSION",
+                columns: table => new
+                {
+                    role_id = table.Column<int>(type: "int", nullable: false),
+                    permission_id = table.Column<int>(type: "int", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ROLE_PERMISSION", x => new { x.role_id, x.permission_id });
+                    table.ForeignKey(
+                        name: "FK_ROLE_PERMISSION_PERMISSION_permission_id",
+                        column: x => x.permission_id,
+                        principalTable: "PERMISSION",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ROLE_PERMISSION_ROLE_role_id",
+                        column: x => x.role_id,
+                        principalTable: "ROLE",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -167,6 +271,30 @@ namespace FootballField.API.Database.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "REFRESH_TOKEN",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    token = table.Column<string>(type: "varchar(256)", unicode: false, maxLength: 256, nullable: false),
+                    expires_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
+                    is_revoked = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    revoked_at = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_REFRESH_TOKEN", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_REFRESH_TOKEN_USER_user_id",
+                        column: x => x.user_id,
+                        principalTable: "USER",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "USER_ACTIVITY_LOG",
                 columns: table => new
                 {
@@ -187,6 +315,31 @@ namespace FootballField.API.Database.Migrations
                         column: x => x.user_id,
                         principalTable: "USER",
                         principalColumn: "id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "USER_ROLE",
+                columns: table => new
+                {
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    role_id = table.Column<int>(type: "int", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_USER_ROLE", x => new { x.user_id, x.role_id });
+                    table.ForeignKey(
+                        name: "FK_USER_ROLE_ROLE_role_id",
+                        column: x => x.role_id,
+                        principalTable: "ROLE",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_USER_ROLE_USER_user_id",
+                        column: x => x.user_id,
+                        principalTable: "USER",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -244,7 +397,8 @@ namespace FootballField.API.Database.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     user_id = table.Column<int>(type: "int", nullable: false),
                     complex_id = table.Column<int>(type: "int", nullable: false),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())"),
+                    FieldId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -255,6 +409,11 @@ namespace FootballField.API.Database.Migrations
                         principalTable: "COMPLEX",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_FAVORITE_COMPLEX_FIELD_FieldId",
+                        column: x => x.FieldId,
+                        principalTable: "FIELD",
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "FK_FAVORITE_COMPLEX_USER_user_id",
                         column: x => x.user_id,
@@ -378,6 +537,53 @@ namespace FootballField.API.Database.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "REVIEW_HELPFUL_VOTE",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    review_id = table.Column<int>(type: "int", nullable: false),
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_REVIEW_HELPFUL_VOTE", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_REVIEW_HELPFUL_VOTE_REVIEW_review_id",
+                        column: x => x.review_id,
+                        principalTable: "REVIEW",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_REVIEW_HELPFUL_VOTE_USER_user_id",
+                        column: x => x.user_id,
+                        principalTable: "USER",
+                        principalColumn: "id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "REVIEW_IMAGE",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    review_id = table.Column<int>(type: "int", nullable: false),
+                    image_url = table.Column<string>(type: "varchar(max)", unicode: false, nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "DATEADD(HOUR, 7, GETUTCDATE())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_REVIEW_IMAGE", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_REVIEW_IMAGE_REVIEW_review_id",
+                        column: x => x.review_id,
+                        principalTable: "REVIEW",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_BOOKING_approved_by",
                 table: "BOOKING",
@@ -431,6 +637,11 @@ namespace FootballField.API.Database.Migrations
                 column: "complex_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_FAVORITE_COMPLEX_FieldId",
+                table: "FAVORITE_COMPLEX",
+                column: "FieldId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_FAVORITE_COMPLEX_user_id_complex_id",
                 table: "FAVORITE_COMPLEX",
                 columns: new[] { "user_id", "complex_id" },
@@ -458,9 +669,66 @@ namespace FootballField.API.Database.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_PERMISSION_permission_key",
+                table: "PERMISSION",
+                column: "permission_key",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Province_Code",
+                schema: "location",
+                table: "Provinces",
+                column: "code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Provinces_name",
+                schema: "location",
+                table: "Provinces",
+                column: "name");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_REFRESH_TOKEN_token",
+                table: "REFRESH_TOKEN",
+                column: "token",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RefreshToken_UserId",
+                table: "REFRESH_TOKEN",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_REVIEW_booking_id",
                 table: "REVIEW",
                 column: "booking_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_REVIEW_HELPFUL_VOTE_user_id",
+                table: "REVIEW_HELPFUL_VOTE",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReviewHelpfulVote_ReviewId_UserId",
+                table: "REVIEW_HELPFUL_VOTE",
+                columns: new[] { "review_id", "user_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReviewImage_ReviewId",
+                table: "REVIEW_IMAGE",
+                column: "review_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ROLE_name",
+                table: "ROLE",
+                column: "name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ROLE_PERMISSION_permission_id",
+                table: "ROLE_PERMISSION",
+                column: "permission_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_SYSTEM_CONFIG_config_key",
@@ -495,6 +763,30 @@ namespace FootballField.API.Database.Migrations
                 name: "IX_USER_ACTIVITY_LOG_user_id",
                 table: "USER_ACTIVITY_LOG",
                 column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_USER_ROLE_role_id",
+                table: "USER_ROLE",
+                column: "role_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Ward_Code",
+                schema: "location",
+                table: "Wards",
+                column: "code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Ward_ProvinceCode",
+                schema: "location",
+                table: "Wards",
+                column: "province_code");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Wards_name",
+                schema: "location",
+                table: "Wards",
+                column: "name");
         }
 
         /// <inheritdoc />
@@ -513,7 +805,16 @@ namespace FootballField.API.Database.Migrations
                 name: "OWNER_SETTING");
 
             migrationBuilder.DropTable(
-                name: "REVIEW");
+                name: "REFRESH_TOKEN");
+
+            migrationBuilder.DropTable(
+                name: "REVIEW_HELPFUL_VOTE");
+
+            migrationBuilder.DropTable(
+                name: "REVIEW_IMAGE");
+
+            migrationBuilder.DropTable(
+                name: "ROLE_PERMISSION");
 
             migrationBuilder.DropTable(
                 name: "SYSTEM_CONFIG");
@@ -523,6 +824,26 @@ namespace FootballField.API.Database.Migrations
 
             migrationBuilder.DropTable(
                 name: "USER_ACTIVITY_LOG");
+
+            migrationBuilder.DropTable(
+                name: "USER_ROLE");
+
+            migrationBuilder.DropTable(
+                name: "Wards",
+                schema: "location");
+
+            migrationBuilder.DropTable(
+                name: "REVIEW");
+
+            migrationBuilder.DropTable(
+                name: "PERMISSION");
+
+            migrationBuilder.DropTable(
+                name: "ROLE");
+
+            migrationBuilder.DropTable(
+                name: "Provinces",
+                schema: "location");
 
             migrationBuilder.DropTable(
                 name: "BOOKING");

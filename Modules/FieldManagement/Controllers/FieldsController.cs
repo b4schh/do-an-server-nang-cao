@@ -96,5 +96,24 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
             await _fieldService.SoftDeleteFieldAsync(id);
             return Ok(ApiResponse<string>.Ok("", "Xóa sân con thành công"));
         }
+
+        // Clone Field (with or without timeslots)
+        [HttpPost("{id}/clone")]
+        [HasPermission("field.create")]
+        public async Task<IActionResult> Clone(int id, [FromBody] CloneFieldDto cloneFieldDto)
+        {
+            var cloned = await _fieldService.CloneFieldAsync(id, cloneFieldDto);
+            return CreatedAtAction(nameof(GetById), new { id = cloned.Id }, 
+                ApiResponse<FieldDto>.Ok(cloned, "Sao chép sân con thành công", 201));
+        }
+
+        // Batch add timeslots to multiple fields
+        [HttpPost("batch-timeslots")]
+        [HasPermission("field.edit_own")]
+        public async Task<IActionResult> BatchAddTimeSlots([FromBody] BatchAddTimeSlotsDto batchAddTimeSlotsDto)
+        {
+            await _fieldService.BatchAddTimeSlotsAsync(batchAddTimeSlotsDto);
+            return Ok(ApiResponse<string>.Ok("", $"Thêm khung giờ cho {batchAddTimeSlotsDto.FieldIds.Count} sân thành công"));
+        }
     }
 }

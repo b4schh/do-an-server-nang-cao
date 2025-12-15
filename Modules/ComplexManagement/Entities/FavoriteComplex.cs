@@ -1,4 +1,3 @@
-using FootballField.API.Modules.FieldManagement.Entities;
 using FootballField.API.Modules.UserManagement.Entities;
 
 namespace FootballField.API.Modules.ComplexManagement.Entities;
@@ -12,5 +11,5 @@ public class FavoriteComplex
 
     // Navigation properties
     public User User { get; set; } = null!;
-    public Field Field { get; set; } = null!;
+    public Complex Complex { get; set; } = null!;
 }

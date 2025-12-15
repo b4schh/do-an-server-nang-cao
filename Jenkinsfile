@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        REGISTRY_URL = 'localhost:5000'
+        IMAGE_NAME = 'football-api'
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -11,36 +16,45 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t football-api -f Dockerfile .'
+                sh 'docker build -t ${IMAGE_NAME} -f Dockerfile .'
             }
         }
 
         stage('Tag Image') {
             steps {
-                sh 'docker tag football-api localhost:5000/football-api:latest'
+                sh 'docker tag ${IMAGE_NAME} ${REGISTRY_URL}/${IMAGE_NAME}:latest'
             }
         }
 
         stage('Login to Registry') {
             steps {
-                sh 'echo "admin123" | docker login localhost:5000 -u admin --password-stdin'
+                sh 'echo "admin123" | docker login ${REGISTRY_URL} -u admin --password-stdin'
             }
         }
 
         stage('Push Image to Registry') {
             steps {
-                sh 'docker push localhost:5000/football-api:latest'
+                sh 'docker push ${REGISTRY_URL}/${IMAGE_NAME}:latest'
             }
         }
 
         stage('Deploy') {
             steps {
                 sh '''
-                    docker compose -f docker-compose.prod.yml down
-                    docker compose -f docker-compose.prod.yml pull
-                    docker compose -f docker-compose.prod.yml up -d --force-recreate
+                    docker compose -f docker-compose.prod.yml --env-file .env.prod down
+                    docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+                    docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --force-recreate
                 '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Deployment to Production completed successfully!'
+        }
+        failure {
+            echo 'Deployment failed! Please check the logs.'
         }
     }
 }

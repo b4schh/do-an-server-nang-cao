@@ -10,10 +10,12 @@ public static class ComplexManagementModule
         // Register Complex Repositories
         services.AddScoped<IComplexRepository, ComplexRepository>();
         services.AddScoped<IComplexImageRepository, ComplexImageRepository>();
+        services.AddScoped<IFavoriteComplexRepository, FavoriteComplexRepository>();
         
         // Register Complex Services
         services.AddScoped<IComplexService, ComplexService>();
         services.AddScoped<IComplexImageService, ComplexImageService>();
+        services.AddScoped<IFavoriteComplexService, FavoriteComplexService>();
         
         return services;
     }

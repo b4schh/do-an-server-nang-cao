@@ -308,6 +308,7 @@ public static class DatabaseSeeder
             new Permission { PermissionKey = "booking.approve", Description = "Duyệt bill đặt sân", Module = "BookingManagement" },
             new Permission { PermissionKey = "booking.reject", Description = "Từ chối bill đặt sân", Module = "BookingManagement" },
             new Permission { PermissionKey = "booking.view_own_complex", Description = "Xem booking của cụm sân mình quản lý", Module = "BookingManagement" },
+            new Permission { PermissionKey = "booking.mark_complete", Description = "Đánh dấu hoàn thành đơn đặt sân", Module = "BookingManagement" },
             new Permission { PermissionKey = "booking.mark_no_show", Description = "Đánh dấu khách không đến", Module = "BookingManagement" },
             new Permission { PermissionKey = "review.reply", Description = "Trả lời đánh giá", Module = "ReviewManagement" },
             new Permission { PermissionKey = "owner_settings.manage", Description = "Quản lý cấu hình chủ sân", Module = "OwnerSettingsManagement" },
@@ -371,7 +372,7 @@ public static class DatabaseSeeder
             "complex.create", "complex.edit_own", "complex.delete_own", "complex.upload_images",
             "field.create", "field.edit_own", "field.delete_own",
             "timeslot.create", "timeslot.edit_own", "timeslot.delete_own",
-            "booking.approve", "booking.reject", "booking.view_own_complex", "booking.mark_no_show",
+            "booking.approve", "booking.reject", "booking.view_own_complex", "booking.mark_complete", "booking.mark_no_show",
             "review.reply",
             "owner_settings.manage"
         }.Contains(p.PermissionKey)).ToList();

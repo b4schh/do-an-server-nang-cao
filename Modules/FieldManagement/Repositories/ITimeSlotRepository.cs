@@ -7,5 +7,6 @@ namespace FootballField.API.Modules.FieldManagement.Repositories
     {
         Task<IEnumerable<TimeSlot>> GetByFieldIdAsync(int fieldId);
         Task<IEnumerable<TimeSlot>> GetActiveTimeSlotsAsync(int fieldId);
+        new Task AddRangeAsync(IEnumerable<TimeSlot> timeSlots);
     }
 }

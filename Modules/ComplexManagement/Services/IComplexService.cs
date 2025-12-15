@@ -37,5 +37,10 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             decimal? maxPrice = null,
             double? minRating = null,
             double? maxRating = null);
+        
+        /// <summary>
+        /// Bulk setup: Create complex with multiple fields and timeslots in one transaction
+        /// </summary>
+        Task<ComplexDto> BulkSetupComplexAsync(BulkSetupComplexDto bulkSetupDto, int ownerId);
     }
 }
