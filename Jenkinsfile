@@ -13,12 +13,12 @@ pipeline {
             steps {
                 script {
                     // Format: 20251215-093045
-                    IMAGE_TAG = sh(
+                    env.IMAGE_TAG = sh(
                         script: "date +%Y%m%d-%H%M%S",
                         returnStdout: true
                     ).trim()
 
-                    echo "Build image tag: ${IMAGE_TAG}"
+                    echo "Build image tag: ${env.IMAGE_TAG}"
                 }
             }
         }
