@@ -1,3 +1,4 @@
+
 using FootballField.API.Shared.Dtos;
 using FootballField.API.Modules.FieldManagement.Dtos;
 using FootballField.API.Modules.FieldManagement.Services;
@@ -39,10 +40,28 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
 
         // Lấy TimeSlot theo FieldID
         [HttpGet("field/{fieldId}")]
-        public async Task<IActionResult> GetByFieldId(int fieldId)
+        public async Task<IActionResult> GetByFieldId(int fieldId, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
-            var timeSlots = await _timeSlotService.GetTimeSlotsByFieldIdAsync(fieldId);
-            return Ok(ApiResponse<IEnumerable<TimeSlotDto>>.Ok(timeSlots, "Lấy danh sách khung giờ thành công"));
+            var (timeSlots, totalCount) = await _timeSlotService.GetTimeSlotsByFieldIdPagedAsync(fieldId, pageIndex, pageSize);
+            var response = new ApiPagedResponse<TimeSlotDto>(timeSlots, pageIndex, pageSize, totalCount, "Lấy danh sách khung giờ thành công");
+            return Ok(response);
+        }
+
+        // Lấy danh sách TimeSlots của mình (Owner)
+        [HttpGet("owner/my-time-slots")]
+        [HasPermission("timeslot.edit_own")]
+        public async Task<IActionResult> GetMyTimeSlots([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        {
+            var ownerId = GetUserId();
+            var (timeSlots, totalCount) = await _timeSlotService.GetTimeSlotsByOwnerIdPagedAsync(ownerId, pageIndex, pageSize);
+            var response = new ApiPagedResponse<TimeSlotDto>(timeSlots, pageIndex, pageSize, totalCount, "Lấy danh sách khung giờ thành công");
+            return Ok(response);
+        }
+
+        private int GetUserId()
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            return int.Parse(userIdClaim ?? "0");
         }
 
         // Tạo TimeSlot mới
@@ -78,6 +97,17 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
             return Ok(ApiResponse<string>.Ok("", "Cập nhật khung giờ thành công"));
         }
 
+        // Toggle trạng thái hoạt động của TimeSlot
+        [HttpPatch("{id}/toggle-active")]
+        [HasPermission("timeslot.edit_own")]
+        public async Task<IActionResult> ToggleActive(int id, [FromBody] bool isActive)
+        {
+            var result = await _timeSlotService.ToggleActiveAsync(id, isActive);
+            if (!result.isSuccess)
+                return BadRequest(ApiResponse<string>.Fail(result.errorMessage ?? "Cập nhật trạng thái thất bại"));
+            return Ok(ApiResponse<string>.Ok(null, "Cập nhật trạng thái thành công"));
+        }
+        
         // Xóa TimeSlot
         [HttpDelete("{id}")]
         [HasPermission("timeslot.delete_own")]

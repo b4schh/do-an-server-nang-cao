@@ -1,3 +1,0 @@
-/api/bookings
-- % đặt cọc đang fixed là 30%
-- Ảnh thanh toán upload lên chưa có prefix chia folder

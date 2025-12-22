@@ -9,6 +9,10 @@ using FootballField.API.Modules.UserManagement.Dtos;
 using FootballField.API.Modules.UserManagement.Entities;
 using FootballField.API.Modules.LocationManagement.Dtos;
 using FootballField.API.Modules.LocationManagement.Entities;
+using FootballField.API.Modules.OwnerSettingsManagement.Dtos;
+using FootballField.API.Modules.OwnerSettingsManagement.Entities;
+using FootballField.API.Modules.SystemConfigManagement.Dtos;
+using FootballField.API.Modules.SystemConfigManagement.Entities;
 
 namespace FootballField.API.Database
 {
@@ -55,7 +59,9 @@ namespace FootballField.API.Database
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
 
             // Field Mapping
-            CreateMap<Field, FieldDto>();
+            CreateMap<Field, FieldDto>()
+                .ForMember(dest => dest.ComplexName, opt => opt.MapFrom(src => src.Complex != null ? src.Complex.Name : null))
+                .ForMember(dest => dest.TimeSlotCount, opt => opt.Ignore()); // Will be set separately in service if needed
             CreateMap<Field, FieldWithTimeSlotsDto>()
                 .ForMember(dest => dest.TimeSlots, opt => opt.MapFrom(src => src.TimeSlots));
             CreateMap<CreateFieldDto, Field>();
@@ -65,7 +71,11 @@ namespace FootballField.API.Database
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
 
             // Timeslot Mapping
-            CreateMap<TimeSlot, FootballField.API.Modules.FieldManagement.Dtos.TimeSlotDto>();
+            CreateMap<TimeSlot, FootballField.API.Modules.FieldManagement.Dtos.TimeSlotDto>()
+                .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.Price)) // Explicit mapping
+                .ForMember(dest => dest.FieldName, opt => opt.Ignore()) // Will be set in service
+                .ForMember(dest => dest.ComplexId, opt => opt.Ignore()) // Will be set in service
+                .ForMember(dest => dest.ComplexName, opt => opt.Ignore()); // Will be set in service
             CreateMap<TimeSlot, TimeSlotWithAvailabilityDto>()
                 .ForMember(dest => dest.IsBooked, opt => opt.MapFrom(src => false)); // Default false, sẽ được set trong service nếu cần
             CreateMap<CreateTimeSlotDto, TimeSlot>();
@@ -95,6 +105,25 @@ namespace FootballField.API.Database
             CreateMap<Province, ProvinceDto>();
             CreateMap<Province, ProvinceWithWardsDto>();
             CreateMap<Ward, WardDto>();
+
+            // OwnerSetting Mapping
+            CreateMap<OwnerSetting, OwnerSettingDto>();
+            CreateMap<CreateOwnerSettingDto, OwnerSetting>();
+            CreateMap<UpdateOwnerSettingDto, OwnerSetting>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.OwnerId, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.BankQrCodeUrl, opt => opt.Ignore()); // Handle in service
+
+            // SystemConfig Mapping
+            CreateMap<SystemConfig, SystemConfigDto>();
+            CreateMap<UpdateSystemConfigDto, SystemConfig>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.ConfigKey, opt => opt.Ignore())
+                .ForMember(dest => dest.DataType, opt => opt.Ignore())
+                .ForMember(dest => dest.Description, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
         }
     }
 }

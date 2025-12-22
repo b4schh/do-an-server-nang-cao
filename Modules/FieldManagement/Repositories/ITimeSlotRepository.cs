@@ -6,6 +6,8 @@ namespace FootballField.API.Modules.FieldManagement.Repositories
     public interface ITimeSlotRepository : IGenericRepository<TimeSlot>
     {
         Task<IEnumerable<TimeSlot>> GetByFieldIdAsync(int fieldId);
+        Task<(IEnumerable<TimeSlot> timeSlots, int totalCount)> GetByFieldIdPagedAsync(int fieldId, int pageIndex, int pageSize);
+        Task<(IEnumerable<TimeSlot> timeSlots, int totalCount)> GetByOwnerIdPagedAsync(int ownerId, int pageIndex, int pageSize);
         Task<IEnumerable<TimeSlot>> GetActiveTimeSlotsAsync(int fieldId);
         new Task AddRangeAsync(IEnumerable<TimeSlot> timeSlots);
     }

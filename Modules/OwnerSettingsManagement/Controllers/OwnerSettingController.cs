@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Authorization;
 using FootballField.API.Modules.OwnerSettingsManagement.Services;
 using FootballField.API.Modules.OwnerSettingsManagement.Dtos;
 using FootballField.API.Shared.Middlewares;
+using FootballField.API.Shared.Dtos;
+using System.Security.Claims;
 
 namespace FootballField.API.Modules.OwnerSettingsManagement.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    [HasPermission("owner_settings.view_all")]
+    [Route("api/owner/settings")]
+    [Authorize]
     public class OwnerSettingController : ControllerBase
     {
         private readonly IOwnerSettingService _service;
@@ -18,40 +20,72 @@ namespace FootballField.API.Modules.OwnerSettingsManagement.Controllers
             _service = service;
         }
 
+        /// <summary>
+        /// Get owner settings with system defaults
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetSettings()
         {
-            return Ok(await _service.GetAllAsync());
+            var ownerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(ownerIdClaim) || !int.TryParse(ownerIdClaim, out int ownerId))
+                return Unauthorized(ApiResponse<object>.Fail("Invalid user", 401));
+
+            var result = await _service.GetSettingsWithDefaultsAsync(ownerId);
+            return Ok(ApiResponse<OwnerSettingResponseDto>.Ok(
+                result,
+                "Lấy cài đặt thành công"
+            ));
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        /// <summary>
+        /// Update owner settings (lazy creation)
+        /// </summary>
+        [HttpPut]
+        public async Task<IActionResult> UpdateSettings(UpdateOwnerSettingDto dto)
         {
-            return Ok(await _service.GetByIdAsync(id));
+            var ownerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(ownerIdClaim) || !int.TryParse(ownerIdClaim, out int ownerId))
+                return Unauthorized(ApiResponse<object>.Fail("Invalid user", 401));
+
+            await _service.UpdateSettingsAsync(ownerId, dto);
+            return Ok(ApiResponse<object>.Ok(
+                null!,
+                "Cập nhật cài đặt thành công"
+            ));
         }
 
-        [HttpPost]
-        [HasPermission("owner_settings.manage")]
-        public async Task<IActionResult> Create(CreateOwnerSettingDto dto)
+        /// <summary>
+        /// Update bank information with QR code upload
+        /// </summary>
+        [HttpPut("bank-info")]
+        public async Task<IActionResult> UpdateBankInfo([FromForm] UpdateBankInfoDto dto)
         {
-            var result = await _service.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            var ownerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(ownerIdClaim) || !int.TryParse(ownerIdClaim, out int ownerId))
+                return Unauthorized(ApiResponse<object>.Fail("Invalid user", 401));
+
+            await _service.UpdateBankInfoAsync(ownerId, dto);
+            return Ok(ApiResponse<object>.Ok(
+                null!,
+                "Cập nhật thông tin ngân hàng thành công"
+            ));
         }
 
-        [HttpPut("{id}")]
-        [HasPermission("owner_settings.manage")]
-        public async Task<IActionResult> Update(int id, UpdateOwnerSettingDto dto)
+        /// <summary>
+        /// Validate if owner has complete bank info
+        /// </summary>
+        [HttpGet("bank-info/validate")]
+        public async Task<IActionResult> ValidateBankInfo()
         {
-            await _service.UpdateAsync(id, dto);
-            return NoContent();
-        }
+            var ownerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(ownerIdClaim) || !int.TryParse(ownerIdClaim, out int ownerId))
+                return Unauthorized(ApiResponse<object>.Fail("Invalid user", 401));
 
-        [HttpDelete("{id}")]
-        [HasPermission("owner_settings.manage")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            await _service.DeleteAsync(id);
-            return NoContent();
+            var isValid = await _service.ValidateBankInfoAsync(ownerId);
+            return Ok(ApiResponse<bool>.Ok(
+                isValid,
+                isValid ? "Thông tin ngân hàng đầy đủ" : "Thông tin ngân hàng chưa đầy đủ"
+            ));
         }
     }
 }

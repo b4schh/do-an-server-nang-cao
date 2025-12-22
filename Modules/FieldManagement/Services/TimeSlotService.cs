@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 
 using FootballField.API.Modules.FieldManagement.Dtos;
 using FootballField.API.Modules.FieldManagement.Entities;
@@ -10,11 +11,13 @@ namespace FootballField.API.Modules.FieldManagement.Services
     {
         private readonly ITimeSlotRepository _timeSlotRepository;
         private readonly IMapper _mapper;
+        private readonly ILogger<TimeSlotService> _logger;
 
-        public TimeSlotService(ITimeSlotRepository timeSlotRepository, IMapper mapper)
+        public TimeSlotService(ITimeSlotRepository timeSlotRepository, IMapper mapper, ILogger<TimeSlotService> logger)
         {
             _timeSlotRepository = timeSlotRepository;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<TimeSlotDto>> GetAllTimeSlotsAsync()
@@ -35,6 +38,35 @@ namespace FootballField.API.Modules.FieldManagement.Services
             return _mapper.Map<IEnumerable<TimeSlotDto>>(timeSlots);
         }
 
+        public async Task<(IEnumerable<TimeSlotDto> timeSlots, int totalCount)> GetTimeSlotsByFieldIdPagedAsync(int fieldId, int pageIndex, int pageSize)
+        {
+            var (timeSlots, totalCount) = await _timeSlotRepository.GetByFieldIdPagedAsync(fieldId, pageIndex, pageSize);
+            var timeSlotDtos = _mapper.Map<IEnumerable<TimeSlotDto>>(timeSlots);
+            return (timeSlotDtos, totalCount);
+        }
+
+        public async Task<(IEnumerable<TimeSlotDto> timeSlots, int totalCount)> GetTimeSlotsByOwnerIdPagedAsync(int ownerId, int pageIndex, int pageSize)
+        {
+            var (timeSlots, totalCount) = await _timeSlotRepository.GetByOwnerIdPagedAsync(ownerId, pageIndex, pageSize);
+
+            // Tạo dictionary để lookup nhanh O(1) thay vì FirstOrDefault O(n)
+            var timeSlotDict = timeSlots.ToDictionary(ts => ts.Id);
+            var timeSlotDtos = _mapper.Map<IEnumerable<TimeSlotDto>>(timeSlots).ToList();
+
+            // Populate navigation properties với O(n) thay vì O(n²)
+            foreach (var dto in timeSlotDtos)
+            {
+                if (timeSlotDict.TryGetValue(dto.Id, out var timeSlot) && timeSlot.Field != null)
+                {
+                    dto.FieldName = timeSlot.Field.Name;
+                    dto.ComplexId = timeSlot.Field.ComplexId;
+                    dto.ComplexName = timeSlot.Field.Complex?.Name;
+                }
+            }
+
+            return (timeSlotDtos, totalCount);
+        }
+
         private bool IsOverlapping(TimeSpan start1, TimeSpan end1, TimeSpan start2, TimeSpan end2)
         {
             return start1 < end2 && start2 < end1;
@@ -51,6 +83,8 @@ namespace FootballField.API.Modules.FieldManagement.Services
             }
 
             var timeSlot = _mapper.Map<TimeSlot>(dto);
+            // Ensure Price is set from DTO (avoid any mapping issues)
+            timeSlot.Price = dto.Price;
             // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             var created = await _timeSlotRepository.AddAsync(timeSlot);
@@ -72,13 +106,40 @@ namespace FootballField.API.Modules.FieldManagement.Services
                     return (false, "Thời gian khung giờ bị trùng với một khung giờ khác của sân này.");
             }
 
+            // Preserve existing IsActive and Price if DTO does not provide them.
+            var previousIsActive = existingTimeSlot.IsActive;
+            var previousPrice = existingTimeSlot.Price;
             _mapper.Map(dto, existingTimeSlot);
+            if (!dto.IsActive.HasValue)
+            {
+                existingTimeSlot.IsActive = previousIsActive;
+            }
+            // If DTO provided Price, apply it; otherwise preserve previous price
+            if (dto.Price.HasValue)
+            {
+                existingTimeSlot.Price = dto.Price.Value;
+            }
+            else
+            {
+                existingTimeSlot.Price = previousPrice;
+            }
             // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _timeSlotRepository.UpdateAsync(existingTimeSlot);
             return (true, null);
         }
 
+        public async Task<(bool isSuccess, string? errorMessage)> ToggleActiveAsync(int id, bool isActive)
+        {
+            var timeSlot = await _timeSlotRepository.GetByIdAsync(id);
+            if (timeSlot == null)
+                return (false, "Không tìm thấy khung giờ");
+            timeSlot.IsActive = isActive;
+            timeSlot.UpdatedAt = DateTime.UtcNow;
+            await _timeSlotRepository.UpdateAsync(timeSlot);
+            return (true, null);
+        }
+        
         public async Task DeleteTimeSlotAsync(int id)
         {
             var timeSlot = await _timeSlotRepository.GetByIdAsync(id);

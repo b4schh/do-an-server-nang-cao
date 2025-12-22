@@ -18,6 +18,35 @@ namespace FootballField.API.Modules.FieldManagement.Repositories
                 .ToListAsync();
         }
 
+        public async Task<(IEnumerable<Field> fields, int totalCount)> GetByComplexIdPagedAsync(int complexId, int pageIndex, int pageSize)
+        {
+            var query = _dbSet
+                .Where(f => f.ComplexId == complexId && !f.IsDeleted);
+
+            var totalCount = await query.CountAsync();
+            var fields = await query
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (fields, totalCount);
+        }
+
+        public async Task<(IEnumerable<Field> fields, int totalCount)> GetByOwnerIdPagedAsync(int ownerId, int pageIndex, int pageSize)
+        {
+            var query = _dbSet
+                .Include(f => f.Complex)
+                .Where(f => f.Complex.OwnerId == ownerId && !f.IsDeleted);
+
+            var totalCount = await query.CountAsync();
+            var fields = await query
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (fields, totalCount);
+        }
+
         public async Task<IEnumerable<Field>> GetActiveFieldsAsync()
         {
             return await _dbSet

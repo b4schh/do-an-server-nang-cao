@@ -2,6 +2,8 @@ using FootballField.API.Modules.ComplexManagement.Entities;
 using FootballField.API.Modules.FieldManagement.Entities;
 using FootballField.API.Modules.UserManagement.Entities;
 using FootballField.API.Modules.OwnerSettingsManagement.Entities;
+using FootballField.API.Modules.SystemConfigManagement.Entities;
+using FootballField.API.Shared.Utils;
 
 namespace FootballField.API.Database;
 
@@ -20,6 +22,9 @@ public static class DatabaseSeederNew
 
         // Seed RBAC data first
         SeedRBACData(context);
+
+        // Seed SystemConfig
+        SeedSystemConfig(context);
 
         if (context.Users.Any())
         {
@@ -44,6 +49,7 @@ public static class DatabaseSeederNew
         Console.WriteLine($"  - Fields: {context.Fields.Count()}");
         Console.WriteLine($"  - Time Slots: {context.TimeSlots.Count()}");
         Console.WriteLine($"  - Owner Settings: {context.OwnerSettings.Count()}");
+        Console.WriteLine($"  - System Configs: {context.SystemConfigs.Count()}");
         Console.WriteLine("");
         Console.WriteLine("Default Login Credentials:");
         Console.WriteLine("  Admin: admin / 123123");
@@ -304,10 +310,10 @@ public static class DatabaseSeederNew
         {
             fields.AddRange(new[]
             {
-                new Field { ComplexId = complex.Id, Name = "Sân 1", SurfaceType = "Cỏ nhân tạo", FieldSize = "Sân 5", IsActive = true },
-                new Field { ComplexId = complex.Id, Name = "Sân 2", SurfaceType = "Cỏ nhân tạo", FieldSize = "Sân 5", IsActive = true },
-                new Field { ComplexId = complex.Id, Name = "Sân 3", SurfaceType = "Cỏ tự nhiên", FieldSize = "Sân 7", IsActive = true },
-                new Field { ComplexId = complex.Id, Name = "Sân 4", SurfaceType = "Cỏ nhân tạo", FieldSize = "Sân 7", IsActive = true }
+                new Field { ComplexId = complex.Id, Name = "Sân 1", SurfaceType = "Cỏ nhân tạo", FieldSize = "Sân 5 người", IsActive = true },
+                new Field { ComplexId = complex.Id, Name = "Sân 2", SurfaceType = "Cỏ nhân tạo", FieldSize = "Sân 5 người", IsActive = true },
+                new Field { ComplexId = complex.Id, Name = "Sân 3", SurfaceType = "Cỏ tự nhiên", FieldSize = "Sân 7 người", IsActive = true },
+                new Field { ComplexId = complex.Id, Name = "Sân 4", SurfaceType = "Cỏ nhân tạo", FieldSize = "Sân 7 người", IsActive = true }
             });
         }
 
@@ -318,7 +324,7 @@ public static class DatabaseSeederNew
         var timeSlots = new List<TimeSlot>();
         foreach (var field in fields)
         {
-            var basePrice = field.FieldSize == "Sân 5" ? 300000m : 500000m;
+            var basePrice = field.FieldSize == "Sân 5 người" ? 300000m : 500000m;
 
             // 11 time slots from 06:00 to 22:30 (1h30 each)
             var slotTimes = new[]
@@ -353,5 +359,72 @@ public static class DatabaseSeederNew
         context.SaveChanges();
 
         Console.WriteLine($"Complexes: {complexes.Count}, Fields: {fields.Count}, TimeSlots: {timeSlots.Count}, OwnerSettings: {ownerSettings.Count} seeded successfully!");
+    }
+
+    private static void SeedSystemConfig(ApplicationDbContext context)
+    {
+        if (context.SystemConfigs.Any())
+        {
+            Console.WriteLine("SystemConfigs already exist. Skipping SystemConfig seed.");
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var configs = new List<SystemConfig>
+        {
+            new SystemConfig
+            {
+                ConfigKey = "DEFAULT_DEPOSIT_RATE",
+                ConfigValue = "0.50",
+                DataType = "decimal",
+                Description = "Tỷ lệ đặt cọc mặc định (50%)",
+                UpdatedAt = now
+            },
+            new SystemConfig
+            {
+                ConfigKey = "MIN_BOOKING_NOTICE_MINUTES",
+                ConfigValue = "120",
+                DataType = "int",
+                Description = "Số phút tối thiểu trước khi đặt sân",
+                UpdatedAt = now
+            },
+            new SystemConfig
+            {
+                ConfigKey = "BOOKING_HOLD_TIME_MINUTES",
+                ConfigValue = "5",
+                DataType = "int",
+                Description = "Thời gian giữ đơn đặt sân (phút)",
+                UpdatedAt = now
+            },
+            new SystemConfig
+            {
+                ConfigKey = "ALLOW_CANCEL_BEFORE_HOURS",
+                ConfigValue = "24",
+                DataType = "int",
+                Description = "Số giờ trước khi được phép hủy đặt sân",
+                UpdatedAt = now
+            },
+            new SystemConfig
+            {
+                ConfigKey = "ENABLE_REVIEW_SYSTEM",
+                ConfigValue = "true",
+                DataType = "boolean",
+                Description = "Bật/tắt hệ thống đánh giá",
+                UpdatedAt = now
+            },
+            new SystemConfig
+            {
+                ConfigKey = "MAINTENANCE_MODE",
+                ConfigValue = "false",
+                DataType = "boolean",
+                Description = "Chế độ bảo trì hệ thống",
+                UpdatedAt = now
+            }
+        };
+
+        context.SystemConfigs.AddRange(configs);
+        context.SaveChanges();
+
+        Console.WriteLine($"SystemConfigs: {configs.Count} seeded successfully!");
     }
 }

@@ -9,6 +9,7 @@ namespace FootballField.API.Modules.ComplexManagement.Services
         Task<ComplexDto?> GetComplexByIdAsync(int id);
         Task<ComplexWithFieldsDto?> GetComplexWithFieldsAsync(int id);
         Task<IEnumerable<ComplexDto>> GetComplexesByOwnerIdAsync(int ownerId);
+        Task<(IEnumerable<ComplexDto> complexes, int totalCount)> GetComplexesByOwnerIdPagedAsync(int ownerId, int pageIndex, int pageSize);
         Task<bool> ValidateOwnerRoleAsync(int ownerId);
         Task<ComplexDto> CreateComplexAsync(CreateComplexDto createComplexDto);
         Task<ComplexDto> CreateComplexByOwnerAsync(CreateComplexByOwnerDto createComplexDto, int ownerId);
@@ -37,6 +38,8 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             decimal? maxPrice = null,
             double? minRating = null,
             double? maxRating = null);
+
+        Task<bool> ToggleActiveAsync(int id, bool isActive);
         
         /// <summary>
         /// Bulk setup: Create complex with multiple fields and timeslots in one transaction

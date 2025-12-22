@@ -9,11 +9,14 @@ namespace FootballField.API.Modules.FieldManagement.Dtos
         [MaxLength(100)]
         public string Name { get; set; } = null!;
 
-        [Required(ErrorMessage = "Loại sân là bắt buộc")]
-        public string FieldType { get; set; } = null!;
+        [Required(ErrorMessage = "Loại kích thước sân là bắt buộc")]
+        public string FieldSize { get; set; } = null!;
 
+        [Required(ErrorMessage = "Loại mặt sân là bắt buộc")]
+
+        public string? SurfaceType { get; set; }
         public string? Description { get; set; }
 
-        public bool IsActive { get; set; }
+        public bool? IsActive { get; set; }
     }
 }

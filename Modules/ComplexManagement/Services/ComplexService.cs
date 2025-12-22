@@ -10,6 +10,7 @@ using FootballField.API.Modules.ComplexManagement.Entities;
 using FootballField.API.Modules.FieldManagement.Entities;
 using FootballField.API.Modules.UserManagement.Entities;
 using FootballField.API.Shared.Utils;
+using FootballField.API.Modules.SystemConfigManagement.Services;
 
 namespace FootballField.API.Modules.ComplexManagement.Services
 {
@@ -20,6 +21,7 @@ namespace FootballField.API.Modules.ComplexManagement.Services
         private readonly ITimeSlotRepository _timeSlotRepository;
         private readonly IUserRepository _userRepository;
         private readonly IBookingRepository _bookingRepository;
+        private readonly ISystemConfigService _systemConfigService;
         private readonly IMapper _mapper;
         private readonly ILogger<ComplexService> _logger;
 
@@ -29,6 +31,7 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             ITimeSlotRepository timeSlotRepository,
             IUserRepository userRepository,
             IBookingRepository bookingRepository,
+            ISystemConfigService systemConfigService,
             IMapper mapper,
             ILogger<ComplexService> logger)
         {
@@ -37,6 +40,7 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             _timeSlotRepository = timeSlotRepository;
             _userRepository = userRepository;
             _bookingRepository = bookingRepository;
+            _systemConfigService = systemConfigService;
             _mapper = mapper;
             _logger = logger;
         }
@@ -137,8 +141,8 @@ namespace FootballField.API.Modules.ComplexManagement.Services
                 for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
                 {
                     var dateKey = date.ToString("yyyy-MM-dd");
-                    var bookedSlotsForDate = bookedTimeSlotsByDate.ContainsKey(dateKey) 
-                        ? bookedTimeSlotsByDate[dateKey] 
+                    var bookedSlotsForDate = bookedTimeSlotsByDate.ContainsKey(dateKey)
+                        ? bookedTimeSlotsByDate[dateKey]
                         : new HashSet<(int FieldId, int TimeSlotId)>();
 
                     fieldDto.DailyTimeSlots[dateKey] = f.TimeSlots.Select(ts => new DailyTimeSlotDto
@@ -165,11 +169,18 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             return _mapper.Map<IEnumerable<ComplexDto>>(complexes);
         }
 
+        public async Task<(IEnumerable<ComplexDto> complexes, int totalCount)> GetComplexesByOwnerIdPagedAsync(int ownerId, int pageIndex, int pageSize)
+        {
+            var (complexes, totalCount) = await _complexRepository.GetByOwnerIdPagedAsync(ownerId, pageIndex, pageSize);
+            var complexDtos = _mapper.Map<IEnumerable<ComplexDto>>(complexes);
+            return (complexDtos, totalCount);
+        }
+
         public async Task<bool> ValidateOwnerRoleAsync(int ownerId)
         {
             var owner = await _userRepository.GetUserByIdWithRoleAsync(ownerId);
             if (owner == null) return false;
-            
+
             return owner.UserRoles.Any(ur => ur.Role.Name == "Owner" || ur.Role.Name == "Admin");
         }
 
@@ -184,8 +195,28 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             double? minRating = null,
             double? maxRating = null)
         {
-            // Lấy tất cả complexes kèm Fields, TimeSlots, Reviews
-            var complexes = await _complexRepository.GetComplexesWithDetailsForSearchAsync();
+            // Check MAINTENANCE_MODE từ SYSTEM_CONFIG
+            var maintenanceMode = await _systemConfigService.GetConfigValueAsync<bool?>("MAINTENANCE_MODE") ?? false;
+            if (maintenanceMode)
+            {
+                // Nếu đang bảo trì, trả về danh sách rỗng
+                return Enumerable.Empty<ComplexDto>();
+            }
+
+            // Lấy tất cả complexes kèm Fields, TimeSlots, Reviews và OwnerSettings
+            var complexesWithBankInfo = await _complexRepository.GetComplexesWithDetailsForSearchAsync();
+
+            // Lọc theo điều kiện hiển thị sân:
+            // - SYSTEM_CONFIG.MAINTENANCE_MODE = false (đã check ở trên)
+            // - COMPLEX.status = Approved
+            // - COMPLEX.is_active = true
+            // - COMPLEX.is_deleted = false (đã lọc trong repository)
+            // - OWNER_SETTING.bank_account_number IS NOT NULL
+            var complexes = complexesWithBankInfo
+                .Where(x => x.Complex.Status == ComplexStatus.Approved
+                         && x.Complex.IsActive
+                         && x.HasBankInfo)
+                .Select(x => x.Complex);
 
             // Filter theo tên
             if (!string.IsNullOrWhiteSpace(name))
@@ -211,18 +242,18 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             // Filter theo SurfaceType (từ Fields)
             if (!string.IsNullOrWhiteSpace(surfaceType))
             {
-                complexes = complexes.Where(c => 
-                    c.Fields != null && c.Fields.Any(f => 
-                        !string.IsNullOrEmpty(f.SurfaceType) && 
+                complexes = complexes.Where(c =>
+                    c.Fields != null && c.Fields.Any(f =>
+                        !string.IsNullOrEmpty(f.SurfaceType) &&
                         f.SurfaceType.Contains(surfaceType, StringComparison.OrdinalIgnoreCase)));
             }
 
             // Filter theo FieldSize (từ Fields)
             if (!string.IsNullOrWhiteSpace(fieldSize))
             {
-                complexes = complexes.Where(c => 
-                    c.Fields != null && c.Fields.Any(f => 
-                        !string.IsNullOrEmpty(f.FieldSize) && 
+                complexes = complexes.Where(c =>
+                    c.Fields != null && c.Fields.Any(f =>
+                        !string.IsNullOrEmpty(f.FieldSize) &&
                         f.FieldSize.Contains(fieldSize, StringComparison.OrdinalIgnoreCase)));
             }
 
@@ -250,7 +281,7 @@ namespace FootballField.API.Modules.ComplexManagement.Services
                         .SelectMany(b => b.Reviews ?? Enumerable.Empty<FootballField.API.Modules.ReviewManagement.Entities.Review>())
                         .Where(r => r.IsVisible && !r.IsDeleted)
                         .ToList();
-                    
+
                     return complexReviews != null &&
                            complexReviews.Any() &&
                            (!minRating.HasValue || complexReviews.Average(r => r.Rating) >= minRating.Value) &&
@@ -267,10 +298,10 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             var created = await _complexRepository.AddAsync(complex);
-            
+
             _logger.LogInformation("Tạo complex mới thành công - Complex ID: {ComplexId}, Name: {Name}, Owner ID: {OwnerId}",
                 created.Id, created.Name, created.OwnerId);
-            
+
             return _mapper.Map<ComplexDto>(created);
         }
 
@@ -281,10 +312,10 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             var created = await _complexRepository.AddAsync(complex);
-            
+
             _logger.LogInformation("Owner tạo complex mới - Complex ID: {ComplexId}, Name: {Name}, Owner ID: {OwnerId}",
                 created.Id, created.Name, ownerId);
-            
+
             return _mapper.Map<ComplexDto>(created);
         }
 
@@ -305,10 +336,10 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             var created = await _complexRepository.AddAsync(complex);
-            
+
             _logger.LogInformation("Admin tạo complex mới - Complex ID: {ComplexId}, Name: {Name}, Owner ID: {OwnerId}",
                 created.Id, created.Name, created.OwnerId);
-            
+
             return _mapper.Map<ComplexDto>(created);
         }
 
@@ -318,11 +349,27 @@ namespace FootballField.API.Modules.ComplexManagement.Services
             if (existingComplex == null)
                 throw new Exception("Complex not found");
 
-            _mapper.Map(updateComplexDto, existingComplex);
+            // Map các field cơ bản
+            existingComplex.Name = updateComplexDto.Name;
+            existingComplex.Street = updateComplexDto.Street;
+            existingComplex.Ward = updateComplexDto.Ward;
+            existingComplex.Province = updateComplexDto.Province;
+            existingComplex.Phone = updateComplexDto.Phone;
+            existingComplex.OpeningTime = updateComplexDto.OpeningTime;
+            existingComplex.ClosingTime = updateComplexDto.ClosingTime;
+            existingComplex.Description = updateComplexDto.Description;
+
+            // Chỉ update Status và IsActive nếu được gửi lên (không null)
+            if (updateComplexDto.Status.HasValue)
+                existingComplex.Status = updateComplexDto.Status.Value;
+
+            if (updateComplexDto.IsActive.HasValue)
+                existingComplex.IsActive = updateComplexDto.IsActive.Value;
+
             // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _complexRepository.UpdateAsync(existingComplex);
-            
+
             _logger.LogInformation("Cập nhật complex - Complex ID: {ComplexId}, Name: {Name}",
                 id, existingComplex.Name);
         }
@@ -330,8 +377,20 @@ namespace FootballField.API.Modules.ComplexManagement.Services
         public async Task SoftDeleteComplexAsync(int id)
         {
             await _complexRepository.SoftDeleteAsync(id);
-            
+
             _logger.LogWarning("Xóa mềm complex - Complex ID: {ComplexId}", id);
+        }
+
+        public async Task<bool> ToggleActiveAsync(int id, bool isActive)
+        {
+            var complex = await _complexRepository.GetByIdAsync(id);
+            if (complex == null || complex.IsDeleted)
+                return false;
+
+            complex.IsActive = isActive;
+            await _complexRepository.UpdateAsync(complex);
+            _logger.LogInformation("Toggle isActive for ComplexId {ComplexId} to {IsActive}", id, isActive);
+            return true;
         }
 
         public async Task ApproveComplexAsync(int id)

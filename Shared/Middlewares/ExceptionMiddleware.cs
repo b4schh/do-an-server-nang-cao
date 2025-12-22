@@ -92,7 +92,7 @@ namespace FootballField.API.Shared.Middlewares
                 // Default - 500
                 _ => (
                     (int)HttpStatusCode.InternalServerError,
-                    "Lỗi không xác định xảy ra trán máy chủ",
+                    "Lỗi không xác định xảy ra trên máy chủ",
                     true // Luôn log unknown errors
                 )
             };

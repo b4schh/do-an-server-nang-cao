@@ -31,6 +31,7 @@ using FootballField.API.Modules.BookingManagement;
 using FootballField.API.Modules.ReviewManagement;
 using FootballField.API.Modules.NotificationManagement;
 using FootballField.API.Modules.OwnerSettingsManagement;
+using FootballField.API.Modules.SystemConfigManagement;
 using FootballField.API.Modules.LocationManagement;
 using FootballField.API.Modules.LocationManagement.Services;
 
@@ -144,6 +145,7 @@ builder.Services.AddBookingModule();
 builder.Services.AddReviewModule();
 builder.Services.AddNotificationModule();
 builder.Services.AddOwnerSettingsModule();
+builder.Services.AddSystemConfigModule();
 builder.Services.AddLocationManagementModule();
 
 // ========== ĐĂNG KÝ UTILITIES ==========

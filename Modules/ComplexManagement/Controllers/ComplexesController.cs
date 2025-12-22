@@ -159,11 +159,12 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
         // Lấy danh sách Complexes của mình (Owner chỉ có thể xem Complex của mình)
         [HttpGet("owner/my-complexes")]
         [HasPermission("complex.edit_own")]
-        public async Task<IActionResult> GetMyComplexes()
+        public async Task<IActionResult> GetMyComplexes([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
             var ownerId = GetUserId();
-            var complexes = await _complexService.GetComplexesByOwnerIdAsync(ownerId);
-            return Ok(ApiResponse<IEnumerable<ComplexDto>>.Ok(complexes, "Lấy danh sách sân thành công"));
+            var (complexes, totalCount) = await _complexService.GetComplexesByOwnerIdPagedAsync(ownerId, pageIndex, pageSize);
+            var response = new ApiPagedResponse<ComplexDto>(complexes, pageIndex, pageSize, totalCount, "Lấy danh sách sân thành công");
+            return Ok(response);
         }
 
         // DEPRECATED: Get complexes by owner ID
@@ -230,6 +231,22 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
 
             await _complexService.SoftDeleteComplexAsync(id);
             return Ok(ApiResponse<string>.Ok("", "Xóa sân thành công"));
+        }
+
+        // Bật/tắt trạng thái hoạt động của Complex
+        [HttpPatch("{id}/toggle-active")]
+        [HasPermission("complex.edit_own")]
+        public async Task<IActionResult> ToggleActive(int id, [FromBody] bool isActive)
+        {
+            var existing = await _complexService.GetComplexByIdAsync(id);
+            if (existing == null)
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
+
+            var result = await _complexService.ToggleActiveAsync(id, isActive);
+            if (!result)
+                return BadRequest(ApiResponse<string>.Fail("Cập nhật trạng thái hoạt động thất bại", 400));
+
+            return Ok(ApiResponse<string>.Ok("", "Cập nhật trạng thái hoạt động thành công"));
         }
 
         // Duyệt Complex

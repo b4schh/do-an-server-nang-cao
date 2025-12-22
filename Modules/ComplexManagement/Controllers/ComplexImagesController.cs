@@ -20,11 +20,11 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
 
         [HttpPost("{complexId:int}/upload")]
         [HasPermission("complex.upload_images")]
-        public async Task<IActionResult> UploadComplexImage(int complexId, IFormFile file, string? description = null)
+        public async Task<IActionResult> UploadComplexImages(int complexId, [FromForm] List<IFormFile> files)
         {
             var userId = GetUserId();
-            var result = await _complexImageService.UploadImageAsync(complexId, file, userId, description);
-            return Ok(ApiResponse<ComplexImageResponseDto>.Ok(result, "Upload ảnh thành công!"));
+            var results = await _complexImageService.UploadMultipleImagesAsync(complexId, files, userId);
+            return Ok(ApiResponse<List<ComplexImageResponseDto>>.Ok(results, $"Upload {results.Count} ảnh thành công!"));
         }
 
         [HttpGet("{complexId:int}")]
@@ -41,6 +41,15 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
             var userId = GetUserId();
             await _complexImageService.DeleteImageAsync(imageId, userId);
             return Ok(ApiResponse<object?>.Ok(null, "Xóa ảnh thành công!"));
+        }
+
+        [HttpPut("{imageId:int}/set-main")]
+        [HasPermission("complex.upload_images")]
+        public async Task<IActionResult> SetMainImage(int imageId)
+        {
+            var userId = GetUserId();
+            await _complexImageService.SetMainImageAsync(imageId, userId);
+            return Ok(ApiResponse<object?>.Ok(null, "Cập nhật ảnh chính thành công!"));
         }
 
         // Helper method to get userId from JWT claims

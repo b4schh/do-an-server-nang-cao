@@ -151,6 +151,105 @@ public class ComplexImageService : IComplexImageService
         return result;
     }
 
+    public async Task<List<ComplexImageResponseDto>> UploadMultipleImagesAsync(int complexId, List<IFormFile> files, int userId)
+    {
+        if (files == null || files.Count == 0)
+        {
+            throw new ArgumentException("Vui lòng chọn ít nhất 1 file để upload!");
+        }
+
+        // Check ownership once
+        var complex = await _complexRepository.GetByIdAsync(complexId);
+        if (complex == null)
+        {
+            throw new ArgumentException("Không tìm thấy complex!");
+        }
+        
+        if (complex.OwnerId != userId)
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền upload ảnh cho complex này!");
+        }
+
+        // Kiểm tra xem complex đã có main image chưa
+        var existingImages = await _complexImageRepository.GetByComplexIdAsync(complexId);
+        var hasMainImage = existingImages.Any(img => img.IsMain);
+
+        var results = new List<ComplexImageResponseDto>();
+        var isFirstImage = !hasMainImage; // Nếu chưa có main image thì ảnh đầu tiên sẽ là main
+
+        for (int i = 0; i < files.Count; i++)
+        {
+            var file = files[i];
+
+            // Validate file
+            if (file == null || file.Length == 0)
+            {
+                _logger.LogWarning("Skipping empty file at index {Index}", i);
+                continue;
+            }
+
+            // Validate file type
+            var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/webp" };
+            if (!allowedTypes.Contains(file.ContentType.ToLower()))
+            {
+                _logger.LogWarning("Skipping invalid file type {ContentType} at index {Index}", file.ContentType, i);
+                continue;
+            }
+
+            // Validate file size (5MB)
+            if (file.Length > 5 * 1024 * 1024)
+            {
+                _logger.LogWarning("Skipping file larger than 5MB at index {Index}", i);
+                continue;
+            }
+
+            try
+            {
+                // Generate unique filename
+                var fileExtension = Path.GetExtension(file.FileName);
+                var fileName = $"complex-{complexId}-{Guid.NewGuid()}{fileExtension}";
+                var objectName = $"complexes/{fileName}";
+
+                // Upload to MinIO
+                string relativePath;
+                using (var stream = file.OpenReadStream())
+                {
+                    relativePath = await _storageService.UploadAsync(stream, objectName, file.ContentType);
+                }
+
+                // Save to database - ảnh đầu tiên là main nếu chưa có main image
+                var complexImageDto = new ComplexImageCreateDto
+                {
+                    ComplexId = complexId,
+                    ImageUrl = relativePath,
+                    IsMain = isFirstImage && i == 0 // Chỉ ảnh đầu tiên mới được set main
+                };
+
+                var result = await CreateAsync(complexImageDto);
+                
+                // Trả về full URL cho client
+                result.ImageUrl = _storageService.GetFullUrl(result.ImageUrl);
+                results.Add(result);
+
+                _logger.LogInformation("Uploaded image {Index}/{Total} for complex {ComplexId}: {ImageId}", 
+                    i + 1, files.Count, complexId, result.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to upload image at index {Index} for complex {ComplexId}", i, complexId);
+                // Tiếp tục upload các ảnh khác
+            }
+        }
+
+        if (results.Count == 0)
+        {
+            throw new Exception("Không có ảnh nào được upload thành công!");
+        }
+
+        _logger.LogInformation("Successfully uploaded {Count} images for complex {ComplexId}", results.Count, complexId);
+        return results;
+    }
+
     public async Task<List<ComplexImageResponseDto>> GetImagesByComplexIdAsync(int complexId)
     {
         var images = await GetByComplexIdAsync(complexId);
@@ -199,5 +298,43 @@ public class ComplexImageService : IComplexImageService
         await DeleteAsync(imageId);
         
         _logger.LogInformation("Deleted complex image: {ImageId}", imageId);
+    }
+
+    public async Task SetMainImageAsync(int imageId, int userId)
+    {
+        var image = await _complexImageRepository.GetByIdAsync(imageId);
+        if (image == null)
+        {
+            throw new ArgumentException("Không tìm thấy ảnh!");
+        }
+
+        // Check ownership
+        var complex = await _complexRepository.GetByIdAsync(image.ComplexId);
+        if (complex == null)
+        {
+            throw new ArgumentException("Không tìm thấy complex!");
+        }
+        
+        if (complex.OwnerId != userId)
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền thay đổi ảnh của complex này!");
+        }
+
+        // Unset all main images for this complex first
+        var allImages = await _complexImageRepository.GetByComplexIdAsync(image.ComplexId);
+        foreach (var img in allImages)
+        {
+            if (img.IsMain)
+            {
+                img.IsMain = false;
+                await _complexImageRepository.UpdateAsync(img);
+            }
+        }
+
+        // Set this image as main
+        image.IsMain = true;
+        await _complexImageRepository.UpdateAsync(image);
+
+        _logger.LogInformation("Set image {ImageId} as main for complex {ComplexId}", imageId, image.ComplexId);
     }
 }

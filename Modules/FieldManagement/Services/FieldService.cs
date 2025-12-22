@@ -14,7 +14,7 @@ namespace FootballField.API.Modules.FieldManagement.Services
         private readonly ILogger<FieldService> _logger;
 
         public FieldService(
-            IFieldRepository fieldRepository, 
+            IFieldRepository fieldRepository,
             ITimeSlotRepository timeSlotRepository,
             IMapper mapper,
             ILogger<FieldService> logger)
@@ -56,11 +56,69 @@ namespace FootballField.API.Modules.FieldManagement.Services
             return _mapper.Map<IEnumerable<FieldDto>>(fields);
         }
 
+        public async Task<(IEnumerable<FieldDto> fields, int totalCount)> GetFieldsByComplexIdPagedAsync(int complexId, int pageIndex, int pageSize, bool includeTimeSlotCount = false)
+        {
+            _logger.LogInformation("Getting fields for complex {ComplexId}, includeTimeSlotCount: {IncludeTimeSlotCount}", complexId, includeTimeSlotCount);
+
+            var (fields, totalCount) = await _fieldRepository.GetByComplexIdPagedAsync(complexId, pageIndex, pageSize);
+            var fieldDtos = _mapper.Map<IEnumerable<FieldDto>>(fields).ToList();
+
+            // If requested, add timeslot count for each field
+            if (includeTimeSlotCount)
+            {
+                foreach (var fieldDto in fieldDtos)
+                {
+                    var timeslots = await _timeSlotRepository.GetByFieldIdAsync(fieldDto.Id);
+                    var count = timeslots.Count();
+                    _logger.LogInformation("Field {FieldId} ({FieldName}) has {Count} timeslots", fieldDto.Id, fieldDto.Name, count);
+                    fieldDto.TimeSlotCount = count;
+                }
+            }
+
+            return (fieldDtos, totalCount);
+        }
+
+        // API mới - luôn luôn trả về TimeSlotCount
+        public async Task<(IEnumerable<FieldDto> fields, int totalCount)> GetFieldsByComplexIdWithTimeSlotCountAsync(int complexId, int pageIndex, int pageSize)
+        {
+            _logger.LogInformation("Getting fields with timeslot count for complex {ComplexId}", complexId);
+
+            var (fields, totalCount) = await _fieldRepository.GetByComplexIdPagedAsync(complexId, pageIndex, pageSize);
+            var fieldDtos = _mapper.Map<IEnumerable<FieldDto>>(fields).ToList();
+
+            // Luôn thêm timeslot count
+            foreach (var fieldDto in fieldDtos)
+            {
+                var timeslots = await _timeSlotRepository.GetByFieldIdAsync(fieldDto.Id);
+                var count = timeslots.Count();
+                _logger.LogInformation("Field {FieldId} ({FieldName}) has {Count} timeslots", fieldDto.Id, fieldDto.Name, count);
+                fieldDto.TimeSlotCount = count;
+            }
+
+            return (fieldDtos, totalCount);
+        }
+
+        public async Task<(IEnumerable<FieldDto> fields, int totalCount)> GetFieldsByOwnerIdPagedAsync(int ownerId, int pageIndex, int pageSize)
+        {
+            var (fields, totalCount) = await _fieldRepository.GetByOwnerIdPagedAsync(ownerId, pageIndex, pageSize);
+            var fieldDtos = _mapper.Map<IEnumerable<FieldDto>>(fields).ToList();
+
+            // Populate TimeSlotCount for each field
+            foreach (var fieldDto in fieldDtos)
+            {
+                var timeslots = await _timeSlotRepository.GetByFieldIdAsync(fieldDto.Id);
+                var count = timeslots.Count();
+                _logger.LogInformation("Owner field {FieldId} ({FieldName}) has {Count} timeslots", fieldDto.Id, fieldDto.Name, count);
+                fieldDto.TimeSlotCount = count;
+            }
+
+            return (fieldDtos, totalCount);
+        }
+
         public async Task<FieldDto> CreateFieldAsync(CreateFieldDto createFieldDto)
         {
             var field = _mapper.Map<Field>(createFieldDto);
             // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
-            
             var created = await _fieldRepository.AddAsync(field);
             return _mapper.Map<FieldDto>(created);
         }
@@ -73,8 +131,19 @@ namespace FootballField.API.Modules.FieldManagement.Services
 
             _mapper.Map(updateFieldDto, existingField);
             // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
-            
             await _fieldRepository.UpdateAsync(existingField);
+        }
+
+        public async Task<bool> ToggleActiveAsync(int id, bool isActive)
+        {
+            var field = await _fieldRepository.GetByIdAsync(id);
+            if (field == null || field.IsDeleted)
+                return false;
+
+            field.IsActive = isActive;
+            await _fieldRepository.UpdateAsync(field);
+            _logger.LogInformation("Toggle isActive for FieldId {FieldId} to {IsActive}", id, isActive);
+            return true;
         }
 
         public async Task SoftDeleteFieldAsync(int id)
@@ -84,7 +153,7 @@ namespace FootballField.API.Modules.FieldManagement.Services
 
         public async Task<FieldDto> CloneFieldAsync(int fieldId, CloneFieldDto cloneFieldDto)
         {
-            _logger.LogInformation("Cloning Field {FieldId} with new name: {NewName}, IncludeTimeSlots: {IncludeTimeSlots}", 
+            _logger.LogInformation("Cloning Field {FieldId} with new name: {NewName}, IncludeTimeSlots: {IncludeTimeSlots}",
                 fieldId, cloneFieldDto.NewFieldName, cloneFieldDto.IncludeTimeSlots);
 
             var originalField = await _fieldRepository.GetFieldWithTimeSlotsAsync(fieldId);
@@ -157,7 +226,7 @@ namespace FootballField.API.Modules.FieldManagement.Services
             if (allNewTimeSlots.Any())
             {
                 await _timeSlotRepository.AddRangeAsync(allNewTimeSlots);
-                _logger.LogInformation("Successfully added {Count} timeslots across {FieldCount} fields", 
+                _logger.LogInformation("Successfully added {Count} timeslots across {FieldCount} fields",
                     allNewTimeSlots.Count, batchAddTimeSlotsDto.FieldIds.Count);
             }
         }

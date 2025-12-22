@@ -21,8 +21,10 @@ namespace FootballField.API.Modules.ComplexManagement.Dtos
         
         public string? Description { get; set; }
 
-        public ComplexStatus Status { get; set; }
+        // Nullable để tránh override giá trị hiện tại khi không được gửi lên
+        public ComplexStatus? Status { get; set; }
         
-        public bool IsActive { get; set; }
+        // Nullable để tránh override giá trị hiện tại khi không được gửi lên
+        public bool? IsActive { get; set; }
     }
 }

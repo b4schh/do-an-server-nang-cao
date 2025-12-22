@@ -5,6 +5,8 @@ using FootballField.API.Modules.FieldManagement.Repositories;
 using FootballField.API.Modules.NotificationManagement.Entities;
 using FootballField.API.Modules.NotificationManagement.Services;
 using FootballField.API.Modules.UserManagement.Repositories;
+using FootballField.API.Modules.OwnerSettingsManagement.Services;
+using FootballField.API.Modules.SystemConfigManagement.Services;
 using FootballField.API.Shared.Dtos.BookingManagement;
 using FootballField.API.Shared.Storage;
 using FootballField.API.Shared.Utils;
@@ -18,12 +20,11 @@ namespace FootballField.API.Modules.BookingManagement.Services
         private readonly ITimeSlotRepository _timeSlotRepository;
         private readonly IUserRepository _userRepository;
         private readonly IStorageService _storageService;
+        private readonly IOwnerSettingService _ownerSettingService;
+        private readonly ISystemConfigService _systemConfigService;
         private readonly IMapper _mapper;
         private readonly INotificationService _notificationService;
         private readonly ILogger<BookingService> _logger;
-
-        private const decimal DEFAULT_DEPOSIT_RATE = 0.3m; // 30% deposit
-        private const int HOLD_MINUTES = 5;
 
         public BookingService(
             IBookingRepository bookingRepository,
@@ -31,6 +32,8 @@ namespace FootballField.API.Modules.BookingManagement.Services
             ITimeSlotRepository timeSlotRepository,
             IUserRepository userRepository,
             IStorageService storageService,
+            IOwnerSettingService ownerSettingService,
+            ISystemConfigService systemConfigService,
             IMapper mapper,
             INotificationService notificationService,
             ILogger<BookingService> logger)
@@ -40,6 +43,8 @@ namespace FootballField.API.Modules.BookingManagement.Services
             _timeSlotRepository = timeSlotRepository;
             _userRepository = userRepository;
             _storageService = storageService;
+            _ownerSettingService = ownerSettingService;
+            _systemConfigService = systemConfigService;
             _mapper = mapper;
             _notificationService = notificationService;
             _logger = logger;
@@ -71,8 +76,23 @@ namespace FootballField.API.Modules.BookingManagement.Services
                 throw new InvalidOperationException("Khung giờ này đã được đặt");
 
             var ownerId = field.Complex.OwnerId;
+            
+            // BẮT BUỘC: Kiểm tra owner đã cấu hình thông tin ngân hàng chưa
+            var hasBankInfo = await _ownerSettingService.ValidateBankInfoAsync(ownerId);
+            if (!hasBankInfo)
+                throw new InvalidOperationException("Chủ sân chưa cấu hình thông tin ngân hàng. Vui lòng liên hệ chủ sân.");
+
+            // Lấy deposit rate từ OWNER_SETTING hoặc SYSTEM_CONFIG
+            var ownerSetting = await _ownerSettingService.GetByOwnerIdAsync(ownerId);
+            var depositRate = ownerSetting?.DepositRate 
+                           ?? await _systemConfigService.GetConfigValueAsync<decimal?>("DEFAULT_DEPOSIT_RATE") 
+                           ?? 0.30m;
+
             var totalAmount = timeSlot.Price;
-            var depositAmount = totalAmount * DEFAULT_DEPOSIT_RATE;
+            var depositAmount = totalAmount * depositRate;
+
+            // Lấy BOOKING_HOLD_TIME từ config hoặc dùng default
+            var holdMinutes = await _systemConfigService.GetConfigValueAsync<int?>("BOOKING_HOLD_TIME_MINUTES") ?? 5;
 
             var booking = new Booking
             {
@@ -81,9 +101,9 @@ namespace FootballField.API.Modules.BookingManagement.Services
                 OwnerId = ownerId,
                 TimeSlotId = dto.TimeSlotId,
                 BookingDate = dto.BookingDate.Date,
-                HoldExpiresAt = vietnamNow.AddMinutes(HOLD_MINUTES),
+                HoldExpiresAt = vietnamNow.AddMinutes(holdMinutes),
                 TotalAmount = totalAmount,
-                DepositAmount = depositAmount,
+                DepositAmount = depositAmount, // Snapshot: Lưu số tiền cọc thực tế
                 Note = dto.Note,
                 BookingStatus = BookingStatus.Pending
             };

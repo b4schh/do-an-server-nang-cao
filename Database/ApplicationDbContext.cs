@@ -374,6 +374,13 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.DepositRate).HasColumnName("deposit_rate").HasColumnType("decimal(5,2)");
             entity.Property(e => e.MinBookingNotice).HasColumnName("min_booking_notice");
             entity.Property(e => e.AllowReview).HasColumnName("allow_review").HasDefaultValue(true);
+            
+            // Bank information fields
+            entity.Property(e => e.BankName).HasColumnName("bank_name").HasMaxLength(100).IsUnicode(true);
+            entity.Property(e => e.BankAccountNumber).HasColumnName("bank_account_number").HasMaxLength(50).IsUnicode(false);
+            entity.Property(e => e.BankAccountName).HasColumnName("bank_account_name").HasMaxLength(200).IsUnicode(true);
+            entity.Property(e => e.BankQrCodeUrl).HasColumnName("bank_qr_code_url").IsUnicode(false);
+            
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");
 

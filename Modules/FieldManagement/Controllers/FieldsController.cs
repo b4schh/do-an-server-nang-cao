@@ -51,12 +51,39 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
         }
 
 
+        // Lấy Field theo ComplexID kèm số lượng timeslot - API mới (phải đặt TRƯỚC route chung)
+        [HttpGet("complex/{complexId}/with-timeslot-count")]
+        public async Task<IActionResult> GetByComplexIdWithTimeSlotCount(int complexId, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        {
+            var (fields, totalCount) = await _fieldService.GetFieldsByComplexIdWithTimeSlotCountAsync(complexId, pageIndex, pageSize);
+            var response = new ApiPagedResponse<FieldDto>(fields, pageIndex, pageSize, totalCount, "Lấy danh sách sân con thành công");
+            return Ok(response);
+        }
+
         // Lấy Field theo ComplexID
         [HttpGet("complex/{complexId}")]
-        public async Task<IActionResult> GetByComplexId(int complexId)
+        public async Task<IActionResult> GetByComplexId(int complexId, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] bool includeTimeSlotCount = false)
         {
-            var fields = await _fieldService.GetFieldsByComplexIdAsync(complexId);
-            return Ok(ApiResponse<IEnumerable<FieldDto>>.Ok(fields, "Lấy danh sách sân con thành công"));
+            var (fields, totalCount) = await _fieldService.GetFieldsByComplexIdPagedAsync(complexId, pageIndex, pageSize, includeTimeSlotCount);
+            var response = new ApiPagedResponse<FieldDto>(fields, pageIndex, pageSize, totalCount, "Lấy danh sách sân con thành công");
+            return Ok(response);
+        }
+
+        // Lấy danh sách Fields của mình (Owner)
+        [HttpGet("owner/my-fields")]
+        [HasPermission("field.edit_own")]
+        public async Task<IActionResult> GetMyFields([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        {
+            var ownerId = GetUserId();
+            var (fields, totalCount) = await _fieldService.GetFieldsByOwnerIdPagedAsync(ownerId, pageIndex, pageSize);
+            var response = new ApiPagedResponse<FieldDto>(fields, pageIndex, pageSize, totalCount, "Lấy danh sách sân con của bạn thành công");
+            return Ok(response);
+        }
+
+        private int GetUserId()
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            return int.Parse(userIdClaim ?? "0");
         }
 
 
@@ -83,6 +110,21 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
             return Ok(ApiResponse<string>.Ok("", "Cập nhật sân con thành công"));
         }
 
+        // Bật/tắt trạng thái hoạt động của Field
+        [HttpPatch("{id}/toggle-active")]
+        [HasPermission("field.edit_own")]
+        public async Task<IActionResult> ToggleActive(int id, [FromBody] bool isActive)
+        {
+            var existing = await _fieldService.GetFieldByIdAsync(id);
+            if (existing == null)
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy sân con", 404));
+
+            var result = await _fieldService.ToggleActiveAsync(id, isActive);
+            if (!result)
+                return BadRequest(ApiResponse<string>.Fail("Cập nhật trạng thái hoạt động thất bại", 400));
+
+            return Ok(ApiResponse<string>.Ok("", "Cập nhật trạng thái hoạt động thành công"));
+        }
 
         // Xóa Field
         [HttpDelete("{id}")]
@@ -103,7 +145,7 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
         public async Task<IActionResult> Clone(int id, [FromBody] CloneFieldDto cloneFieldDto)
         {
             var cloned = await _fieldService.CloneFieldAsync(id, cloneFieldDto);
-            return CreatedAtAction(nameof(GetById), new { id = cloned.Id }, 
+            return CreatedAtAction(nameof(GetById), new { id = cloned.Id },
                 ApiResponse<FieldDto>.Ok(cloned, "Sao chép sân con thành công", 201));
         }
 

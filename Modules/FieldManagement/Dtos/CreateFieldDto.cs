@@ -12,7 +12,9 @@ namespace FootballField.API.Modules.FieldManagement.Dtos
         public string Name { get; set; } = null!;
 
         [Required(ErrorMessage = "Loại sân là bắt buộc")]
-        public string FieldType { get; set; } = null!;
+        public string FieldSize { get; set; } = null!;
+
+        public string? SurfaceType { get; set; }
 
         public string? Description { get; set; }
     }

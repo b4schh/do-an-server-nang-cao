@@ -188,7 +188,7 @@ public static class DatabaseSeeder
                 ComplexId = 1,
                 Name = $"Sân {i}",
                 SurfaceType = i % 2 == 0 ? "Cỏ nhân tạo" : "Cỏ tự nhiên",
-                FieldSize = i <= 2 ? "Sân 5" : "Sân 7",
+                FieldSize = i <= 2 ? "Sân 5 người" : "Sân 7 người",
                 IsActive = true,
             });
         }
@@ -201,7 +201,7 @@ public static class DatabaseSeeder
                 ComplexId = 2,
                 Name = $"Sân {i}",
                 SurfaceType = "Cỏ nhân tạo",
-                FieldSize = i <= 2 ? "Sân 5" : (i <= 4 ? "Sân 7" : "Sân 11"),
+                FieldSize = i <= 2 ? "Sân 5 người" : (i <= 4 ? "Sân 7 người" : "Sân 11 người"),
                 IsActive = true,
             });
         }
@@ -214,7 +214,7 @@ public static class DatabaseSeeder
                 ComplexId = 3,
                 Name = $"Sân {i}",
                 SurfaceType = "Cỏ nhân tạo",
-                FieldSize = i == 1 ? "Sân 5" : "Sân 7",
+                FieldSize = i == 1 ? "Sân 5 người" : "Sân 7 người",
                 IsActive = true,
             });
         }
@@ -227,9 +227,9 @@ public static class DatabaseSeeder
 
         foreach (var field in fields)
         {
-            var basePrice = field.FieldSize == "Sân 5"
+            var basePrice = field.FieldSize == "Sân 5 người"
                 ? 300000m
-                : (field.FieldSize == "Sân 7" ? 500000m : 800000m);
+                : (field.FieldSize == "Sân 7 người" ? 500000m : 800000m);
 
             var startOfDay = new TimeSpan(6, 0, 0);
             var endOfDay = new TimeSpan(23, 59, 0); // end of day
