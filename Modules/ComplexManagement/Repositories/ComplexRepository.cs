@@ -57,6 +57,7 @@ namespace FootballField.API.Modules.ComplexManagement.Repositories
         public async Task<(IEnumerable<Complex> complexes, int totalCount)> GetByOwnerIdPagedAsync(int ownerId, int pageIndex, int pageSize)
         {
             var query = _dbSet
+                .Include(c => c.Fields)
                 .Where(c => c.OwnerId == ownerId && !c.IsDeleted);
 
             var totalCount = await query.CountAsync();

@@ -19,5 +19,6 @@ namespace FootballField.API.Modules.ComplexManagement.Dtos
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public string? MainImageUrl { get; set; }
+        public int FieldCount { get; set; }
     }
 }

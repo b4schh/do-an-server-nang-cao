@@ -183,5 +183,53 @@ namespace FootballField.API.Modules.ReviewManagement.Repositories
                     && b.BookingStatus == BookingManagement.Entities.BookingStatus.Completed)
                 .CountAsync();
         }
+
+        public async Task<(IEnumerable<Review> Reviews, int TotalCount)> GetOwnerReviewsWithPaginationAsync(
+            int ownerId, int pageIndex, int pageSize, int? complexId, int? rating, bool? isVisible)
+        {
+            // Start with base query including all necessary navigation properties
+            var query = _dbSet
+                .Include(r => r.Booking)
+                    .ThenInclude(b => b.Customer)
+                .Include(r => r.Booking)
+                    .ThenInclude(b => b.Field)
+                        .ThenInclude(f => f.Complex)
+                .Include(r => r.Images)
+                .Include(r => r.HelpfulVotes)
+                .AsQueryable();
+
+            // Filter by owner - only show reviews for complexes owned by this owner
+            query = query.Where(r => !r.IsDeleted && r.Booking.Field.Complex.OwnerId == ownerId);
+
+            // Apply optional filters
+            if (complexId.HasValue)
+            {
+                query = query.Where(r => r.Booking.Field.ComplexId == complexId.Value);
+            }
+
+            if (rating.HasValue)
+            {
+                query = query.Where(r => r.Rating == rating.Value);
+            }
+
+            if (isVisible.HasValue)
+            {
+                query = query.Where(r => r.IsVisible == isVisible.Value);
+            }
+
+            // Order by created date descending
+            query = query.OrderByDescending(r => r.CreatedAt);
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply pagination
+            var reviews = await query
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (reviews, totalCount);
+        }
     }
 }

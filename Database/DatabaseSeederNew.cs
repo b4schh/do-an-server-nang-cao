@@ -104,6 +104,7 @@ public static class DatabaseSeederNew
             new Permission { PermissionKey = "booking.mark_complete", Description = "Đánh dấu hoàn thành đơn đặt sân", Module = "BookingManagement" },
             new Permission { PermissionKey = "booking.mark_no_show", Description = "Đánh dấu khách không đến", Module = "BookingManagement" },
             new Permission { PermissionKey = "review.reply", Description = "Trả lời đánh giá", Module = "ReviewManagement" },
+            new Permission { PermissionKey = "review.view_own", Description = "Xem đánh giá của sân mình", Module = "ReviewManagement" },
             new Permission { PermissionKey = "owner_settings.manage", Description = "Quản lý cấu hình chủ sân", Module = "OwnerSettingsManagement" },
 
             // Admin permissions (27-51)

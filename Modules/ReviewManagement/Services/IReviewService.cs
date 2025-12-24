@@ -23,5 +23,7 @@ namespace FootballField.API.Modules.ReviewManagement.Services
             int complexId, int pageIndex, int pageSize);
         Task<bool> VoteHelpfulAsync(int reviewId, int userId);
         Task<bool> UnvoteHelpfulAsync(int reviewId, int userId);
+        Task<(IEnumerable<OwnerReviewDto> Reviews, int TotalCount)> GetOwnerReviewsAsync(
+            int ownerId, int pageIndex, int pageSize, int? complexId, int? rating, bool? isVisible);
     }
 }

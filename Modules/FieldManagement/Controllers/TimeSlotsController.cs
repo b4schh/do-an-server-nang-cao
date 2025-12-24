@@ -50,10 +50,17 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
         // Lấy danh sách TimeSlots của mình (Owner)
         [HttpGet("owner/my-time-slots")]
         [HasPermission("timeslot.edit_own")]
-        public async Task<IActionResult> GetMyTimeSlots([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetMyTimeSlots(
+            [FromQuery] int pageIndex = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? searchTerm = null,
+            [FromQuery] int? complexId = null,
+            [FromQuery] int? fieldId = null,
+            [FromQuery] bool? isActive = null)
         {
             var ownerId = GetUserId();
-            var (timeSlots, totalCount) = await _timeSlotService.GetTimeSlotsByOwnerIdPagedAsync(ownerId, pageIndex, pageSize);
+            var (timeSlots, totalCount) = await _timeSlotService.GetTimeSlotsByOwnerIdPagedAsync(
+                ownerId, pageIndex, pageSize, searchTerm, complexId, fieldId, isActive);
             var response = new ApiPagedResponse<TimeSlotDto>(timeSlots, pageIndex, pageSize, totalCount, "Lấy danh sách khung giờ thành công");
             return Ok(response);
         }

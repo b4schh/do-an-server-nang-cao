@@ -17,5 +17,7 @@ namespace FootballField.API.Modules.ReviewManagement.Repositories
             int complexId, int pageIndex, int pageSize);
         Task<ReviewStatisticsDto> GetReviewStatisticsAsync(int complexId);
         Task<int> GetCustomerCompletedBookingsCountAsync(int customerId, int complexId);
+        Task<(IEnumerable<Review> Reviews, int TotalCount)> GetOwnerReviewsWithPaginationAsync(
+            int ownerId, int pageIndex, int pageSize, int? complexId, int? rating, bool? isVisible);
     }
 }

@@ -513,10 +513,18 @@ namespace FootballField.API.Modules.BookingManagement.Services
             return bookings.Select(MapToBookingDtoSync);
         }
 
-        public async Task<IEnumerable<BookingDto>> GetBookingsForOwnerAsync(int ownerId, BookingStatus? status = null)
+        public async Task<(IEnumerable<BookingDto> bookings, int totalRecords)> GetBookingsForOwnerAsync(int ownerId, int pageIndex, int pageSize, BookingStatus? status = null)
         {
-            var bookings = await _bookingRepository.GetByOwnerAsync(ownerId, status);
-            return bookings.Select(MapToBookingDtoSync);
+            var allBookings = await _bookingRepository.GetByOwnerAsync(ownerId, status);
+            var totalRecords = allBookings.Count();
+            
+            var paginatedBookings = allBookings
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToBookingDtoSync)
+                .ToList();
+            
+            return (paginatedBookings, totalRecords);
         }
 
         public async Task<BookingDto?> GetBookingByIdAsync(int id)

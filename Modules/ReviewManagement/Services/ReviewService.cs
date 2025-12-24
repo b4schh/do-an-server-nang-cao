@@ -316,5 +316,61 @@ namespace FootballField.API.Modules.ReviewManagement.Services
             await _voteRepository.DeleteAsync(vote);
             return true;
         }
+
+        public async Task<(IEnumerable<OwnerReviewDto> Reviews, int TotalCount)> GetOwnerReviewsAsync(
+            int ownerId, int pageIndex, int pageSize, int? complexId, int? rating, bool? isVisible)
+        {
+            var (reviews, totalCount) = await _reviewRepository.GetOwnerReviewsWithPaginationAsync(
+                ownerId, pageIndex, pageSize, complexId, rating, isVisible);
+            
+            var reviewDtos = reviews.Select(MapToOwnerReviewDto).ToList();
+            
+            return (reviewDtos, totalCount);
+        }
+        
+        private OwnerReviewDto MapToOwnerReviewDto(Review review)
+        {
+            var dto = new OwnerReviewDto
+            {
+                Id = review.Id,
+                Rating = review.Rating,
+                Comment = review.Comment,
+                CreatedAt = review.CreatedAt,
+                UpdatedAt = review.UpdatedAt,
+                Helpful = review.HelpfulVotes?.Count ?? 0,
+                IsVisible = review.IsVisible,
+                IsDeleted = review.IsDeleted,
+                BookingId = review.BookingId,
+                FieldId = review.Booking?.Field?.Id ?? 0,
+                FieldName = review.Booking?.Field?.Name ?? "N/A",
+                ComplexId = review.Booking?.Field?.Complex?.Id ?? 0,
+                ComplexName = review.Booking?.Field?.Complex?.Name ?? "N/A",
+                OwnerId = review.Booking?.Field?.Complex?.OwnerId ?? 0
+            };
+            
+            // Map User
+            if (review.Booking?.Customer != null)
+            {
+                dto.User = new ReviewUserDto
+                {
+                    Id = review.Booking.Customer.Id,
+                    Name = $"{review.Booking.Customer.LastName} {review.Booking.Customer.FirstName}",
+                    Avatar = review.Booking.Customer.AvatarUrl != null 
+                        ? _storageService.GetFullUrl(review.Booking.Customer.AvatarUrl) 
+                        : null,
+                    Role = DetermineCustomerRole(review.Booking.CustomerId, review.Booking.Field.ComplexId).Result
+                };
+            }
+            
+            // Map Images
+            if (review.Images != null)
+            {
+                dto.Images = review.Images
+                    .Select(img => _storageService.GetFullUrl(img.ImageUrl))
+                    .ToList();
+            }
+            
+            return dto;
+        }
     }
 }

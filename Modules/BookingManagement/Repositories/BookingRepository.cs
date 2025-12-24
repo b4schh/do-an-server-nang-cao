@@ -163,5 +163,16 @@ namespace FootballField.API.Modules.BookingManagement.Repositories
                             && b.BookingStatus != BookingStatus.Expired)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<Booking>> GetBookingsForOwnerAsync(int ownerId)
+        {
+            return await _dbSet
+                .Include(b => b.Field)
+                    .ThenInclude(f => f.Complex)
+                .Include(b => b.TimeSlot)
+                .Include(b => b.Customer)
+                .Where(b => b.Field.Complex.OwnerId == ownerId)
+                .ToListAsync();
+        }
     }
 }

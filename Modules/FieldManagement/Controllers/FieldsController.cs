@@ -72,10 +72,18 @@ namespace FootballField.API.Modules.FieldManagement.Controllers
         // Lấy danh sách Fields của mình (Owner)
         [HttpGet("owner/my-fields")]
         [HasPermission("field.edit_own")]
-        public async Task<IActionResult> GetMyFields([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetMyFields(
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? searchTerm = null,
+            [FromQuery] int? complexId = null,
+            [FromQuery] string? fieldSize = null,
+            [FromQuery] string? surfaceType = null,
+            [FromQuery] bool? isActive = null)
         {
             var ownerId = GetUserId();
-            var (fields, totalCount) = await _fieldService.GetFieldsByOwnerIdPagedAsync(ownerId, pageIndex, pageSize);
+            var (fields, totalCount) = await _fieldService.GetFieldsByOwnerIdPagedAsync(
+                ownerId, pageIndex, pageSize, searchTerm, complexId, fieldSize, surfaceType, isActive);
             var response = new ApiPagedResponse<FieldDto>(fields, pageIndex, pageSize, totalCount, "Lấy danh sách sân con của bạn thành công");
             return Ok(response);
         }

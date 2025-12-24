@@ -18,6 +18,7 @@ namespace FootballField.API.Modules.BookingManagement.Repositories
         Task<List<Booking>> GetBookingsForComplexAsync(int complexId, DateOnly startDate, DateOnly endDate);
         Task<IEnumerable<Booking>> GetByCustomerAsync(int customerId, BookingStatus? status = null);
         Task<IEnumerable<Booking>> GetByOwnerAsync(int ownerId, BookingStatus? status = null);
+        Task<IEnumerable<Booking>> GetBookingsForOwnerAsync(int ownerId);
         Task<Booking?> GetDetailAsync(int id);
         Task<bool> IsTimeSlotBookedAsync(int fieldId, DateTime bookingDate, int timeSlotId);
         Task<IEnumerable<Booking>> GetExpiredPendingBookingsAsync();

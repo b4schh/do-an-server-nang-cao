@@ -234,6 +234,32 @@ namespace FootballField.API.Modules.ReviewManagement.Controllers
             }
         }
 
+        /// <summary>
+        /// [OWNER] Lấy tất cả review của các complex thuộc sở hữu với pagination và filters
+        /// </summary>
+        [HttpGet("owner/my-reviews")]
+        [HasPermission("review.view_own")]
+        public async Task<IActionResult> GetOwnerReviews(
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] int? complexId = null,
+            [FromQuery] int? rating = null,
+            [FromQuery] bool? isVisible = null)
+        {
+            var ownerId = GetUserId();
+            var (reviews, totalCount) = await _reviewService.GetOwnerReviewsAsync(
+                ownerId, pageIndex, pageSize, complexId, rating, isVisible);
+            
+            var response = new ApiPagedResponse<OwnerReviewDto>(
+                reviews, 
+                pageIndex, 
+                pageSize, 
+                totalCount, 
+                "Lấy danh sách đánh giá thành công");
+            
+            return Ok(response);
+        }
+
         // Helper method
         private int GetUserId()
         {

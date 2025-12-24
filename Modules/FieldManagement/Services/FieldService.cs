@@ -98,9 +98,12 @@ namespace FootballField.API.Modules.FieldManagement.Services
             return (fieldDtos, totalCount);
         }
 
-        public async Task<(IEnumerable<FieldDto> fields, int totalCount)> GetFieldsByOwnerIdPagedAsync(int ownerId, int pageIndex, int pageSize)
+        public async Task<(IEnumerable<FieldDto> fields, int totalCount)> GetFieldsByOwnerIdPagedAsync(
+            int ownerId, int pageIndex, int pageSize,
+            string? searchTerm = null, int? complexId = null, string? fieldSize = null, string? surfaceType = null, bool? isActive = null)
         {
-            var (fields, totalCount) = await _fieldRepository.GetByOwnerIdPagedAsync(ownerId, pageIndex, pageSize);
+            var (fields, totalCount) = await _fieldRepository.GetByOwnerIdPagedWithFiltersAsync(
+                ownerId, pageIndex, pageSize, searchTerm, complexId, fieldSize, surfaceType, isActive);
             var fieldDtos = _mapper.Map<IEnumerable<FieldDto>>(fields).ToList();
 
             // Populate TimeSlotCount for each field

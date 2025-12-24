@@ -45,9 +45,18 @@ namespace FootballField.API.Modules.FieldManagement.Services
             return (timeSlotDtos, totalCount);
         }
 
-        public async Task<(IEnumerable<TimeSlotDto> timeSlots, int totalCount)> GetTimeSlotsByOwnerIdPagedAsync(int ownerId, int pageIndex, int pageSize)
+        public async Task<(IEnumerable<TimeSlotDto> timeSlots, int totalCount)> GetTimeSlotsByOwnerIdPagedAsync(
+            int ownerId, 
+            int pageIndex, 
+            int pageSize,
+            string? searchTerm = null,
+            int? complexId = null,
+            int? fieldId = null,
+            bool? isActive = null)
         {
-            var (timeSlots, totalCount) = await _timeSlotRepository.GetByOwnerIdPagedAsync(ownerId, pageIndex, pageSize);
+            // Use repository method with filters applied at database level
+            var (timeSlots, totalCount) = await _timeSlotRepository.GetByOwnerIdPagedWithFiltersAsync(
+                ownerId, pageIndex, pageSize, searchTerm, complexId, fieldId, isActive);
 
             // Tạo dictionary để lookup nhanh O(1) thay vì FirstOrDefault O(n)
             var timeSlotDict = timeSlots.ToDictionary(ts => ts.Id);

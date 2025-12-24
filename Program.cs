@@ -34,6 +34,7 @@ using FootballField.API.Modules.OwnerSettingsManagement;
 using FootballField.API.Modules.SystemConfigManagement;
 using FootballField.API.Modules.LocationManagement;
 using FootballField.API.Modules.LocationManagement.Services;
+using FootballField.API.Modules.Statistics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -147,6 +148,7 @@ builder.Services.AddNotificationModule();
 builder.Services.AddOwnerSettingsModule();
 builder.Services.AddSystemConfigModule();
 builder.Services.AddLocationManagementModule();
+builder.Services.AddStatisticsModule();
 
 // ========== ĐĂNG KÝ UTILITIES ==========
 builder.Services.AddScoped<JwtHelper>();

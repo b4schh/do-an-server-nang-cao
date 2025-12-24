@@ -118,11 +118,15 @@ namespace FootballField.API.Modules.BookingManagement.Controllers
         // GET api/bookings/owner-bookings - Chủ sân xem booking của mình
         [HttpGet("owner-bookings")]
         [HasPermission("booking.view_own_complex")]
-        public async Task<IActionResult> GetOwnerBookings([FromQuery] BookingStatus? status = null)
+        public async Task<IActionResult> GetOwnerBookings(
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] BookingStatus? status = null)
         {
             var ownerId = GetCurrentUserId();
-            var bookings = await _bookingService.GetBookingsForOwnerAsync(ownerId, status);
-            return Ok(ApiResponse<IEnumerable<BookingDto>>.Ok(bookings, "Lấy danh sách booking thành công"));
+            var (bookings, totalRecords) = await _bookingService.GetBookingsForOwnerAsync(ownerId, pageIndex, pageSize, status);
+            var response = new ApiPagedResponse<BookingDto>(bookings, pageIndex, pageSize, totalRecords, "Lấy danh sách booking thành công");
+            return Ok(response);
         }
 
         // GET api/bookings/{id} - Xem chi tiết booking

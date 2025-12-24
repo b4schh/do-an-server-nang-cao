@@ -44,7 +44,8 @@ namespace FootballField.API.Database
 
             // Complex Mapping
             CreateMap<Complex, ComplexDto>()
-                .ForMember(dest => dest.MainImageUrl, opt => opt.MapFrom(src => src.ComplexImages.FirstOrDefault(img => img.IsMain) != null ? src.ComplexImages.First(img => img.IsMain).ImageUrl : null));
+                .ForMember(dest => dest.MainImageUrl, opt => opt.MapFrom(src => src.ComplexImages.FirstOrDefault(img => img.IsMain) != null ? src.ComplexImages.First(img => img.IsMain).ImageUrl : null))
+                .ForMember(dest => dest.FieldCount, opt => opt.MapFrom(src => src.Fields.Count(f => !f.IsDeleted)));
             CreateMap<Complex, ComplexWithFieldsDto>();
             CreateMap<Complex, ComplexFullDetailsDto>()
                 .ForMember(dest => dest.Fields, opt => opt.Ignore()); // Ignore vì map thủ công trong Service
@@ -68,7 +69,8 @@ namespace FootballField.API.Database
             CreateMap<UpdateFieldDto, Field>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.ComplexId, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.IsActive, opt => opt.Condition(src => src.IsActive.HasValue));
 
             // Timeslot Mapping
             CreateMap<TimeSlot, FootballField.API.Modules.FieldManagement.Dtos.TimeSlotDto>()
