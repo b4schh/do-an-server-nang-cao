@@ -5,7 +5,7 @@ namespace FootballField.API.Modules.UserManagement.Services
     public interface IUserService
     {
         Task<IEnumerable<UserDto>> GetAllUsersAsync();
-        Task<(IEnumerable<UserDto> users, int totalCount)> GetPagedUsersAsync(int pageIndex, int pageSize);
+        Task<(IEnumerable<UserDto> users, int totalCount)> GetPagedUsersAsync(int pageIndex, int pageSize, string? keyword = null, string? role = null, byte? status = null);
         Task<UserDto?> GetUserByIdAsync(int id);
         Task<UserDto?> GetUserByEmailAsync(string email);
         Task<UserDto> CreateUserAsync(CreateUserDto createUserDto);

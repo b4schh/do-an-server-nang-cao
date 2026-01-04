@@ -74,6 +74,51 @@ namespace FootballField.API.Modules.UserManagement.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task<(IEnumerable<User> users, int totalCount)> GetPagedUsersWithFiltersAsync(
+            int pageIndex, 
+            int pageSize, 
+            string? keyword = null, 
+            string? role = null, 
+            byte? status = null)
+        {
+            var query = _dbSet
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .Where(u => !u.IsDeleted)
+                .AsQueryable();
+
+            // Filter by keyword (search in name, email, phone)
+            if (!string.IsNullOrEmpty(keyword))
+            {
+                query = query.Where(u =>
+                    (u.FirstName + " " + u.LastName).Contains(keyword) ||
+                    (u.Email != null && u.Email.Contains(keyword)) ||
+                    (u.Phone != null && u.Phone.Contains(keyword))
+                );
+            }
+
+            // Filter by role
+            if (!string.IsNullOrEmpty(role))
+            {
+                query = query.Where(u => u.UserRoles.Any(ur => ur.Role.Name == role));
+            }
+
+            // Filter by status
+            if (status.HasValue)
+            {
+                query = query.Where(u => (byte)u.Status == status.Value);
+            }
+
+            var totalCount = await query.CountAsync();
+            var users = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (users, totalCount);
+        }
+
         // ======================= REFRESH TOKEN METHODS =======================
 
         public async Task<RefreshToken?> GetRefreshTokenAsync(string token)

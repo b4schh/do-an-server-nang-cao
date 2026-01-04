@@ -14,6 +14,7 @@ namespace FootballField.API.Modules.UserManagement.Repositories
         Task<Role?> GetRoleByNameAsync(string roleName);
         Task AddUserRoleAsync(int userId, int roleId);
         Task RemoveUserRolesAsync(int userId);
+        Task<(IEnumerable<User> users, int totalCount)> GetPagedUsersWithFiltersAsync(int pageIndex, int pageSize, string? keyword = null, string? role = null, byte? status = null);
 
         // Refresh Token methods
         Task<RefreshToken?> GetRefreshTokenAsync(string token);

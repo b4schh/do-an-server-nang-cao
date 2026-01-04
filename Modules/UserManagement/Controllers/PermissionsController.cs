@@ -24,10 +24,17 @@ public class PermissionsController : ControllerBase
     /// </summary>
     [HttpGet]
     [HasPermission("permission.view_all")]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? keyword = null, [FromQuery] string? module = null)
     {
-        var permissions = await _permissionService.GetAllPermissionsAsync();
-        return Ok(ApiResponse<IEnumerable<PermissionDto>>.Ok(permissions, "Lấy danh sách permissions thành công"));
+        var (items, totalCount) = await _permissionService.GetPagedPermissionsAsync(pageIndex, pageSize, keyword, module);
+        var response = new ApiPagedResponse<PermissionDto>(
+            items,
+            pageIndex,
+            pageSize,
+            totalCount,
+            "Lấy danh sách permissions thành công"
+        );
+        return Ok(response);
     }
 
     /// <summary>

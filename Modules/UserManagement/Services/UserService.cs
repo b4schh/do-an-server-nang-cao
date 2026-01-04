@@ -46,9 +46,9 @@ namespace FootballField.API.Modules.UserManagement.Services
             return userDtos;
         }
 
-        public async Task<(IEnumerable<UserDto> users, int totalCount)> GetPagedUsersAsync(int pageIndex, int pageSize)
+        public async Task<(IEnumerable<UserDto> users, int totalCount)> GetPagedUsersAsync(int pageIndex, int pageSize, string? keyword = null, string? role = null, byte? status = null)
         {
-            var (users, totalCount) = await _userRepository.GetPagedAsync(pageIndex, pageSize, u => !u.IsDeleted);
+            var (users, totalCount) = await _userRepository.GetPagedUsersWithFiltersAsync(pageIndex, pageSize, keyword, role, status);
             var userDtos = _mapper.Map<IEnumerable<UserDto>>(users).ToList();
             
             // Map AvatarUrl to full URL

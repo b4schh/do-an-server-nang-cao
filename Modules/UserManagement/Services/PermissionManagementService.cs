@@ -22,6 +22,17 @@ public class PermissionManagementService : IPermissionManagementService
         return _mapper.Map<IEnumerable<PermissionDto>>(permissions);
     }
 
+    public async Task<(IEnumerable<PermissionDto> items, int totalCount)> GetPagedPermissionsAsync(int pageIndex, int pageSize, string? keyword = null, string? module = null)
+    {
+        var (items, totalCount) = await _permissionRepository.GetPagedAsync(
+            pageIndex, 
+            pageSize,
+            p => (string.IsNullOrEmpty(keyword) || p.PermissionKey.Contains(keyword) || (p.Description != null && p.Description.Contains(keyword))) &&
+                 (string.IsNullOrEmpty(module) || p.Module == module)
+        );
+        return (_mapper.Map<IEnumerable<PermissionDto>>(items), totalCount);
+    }
+
     public async Task<PermissionDto?> GetPermissionByIdAsync(int permissionId)
     {
         var permission = await _permissionRepository.GetByIdAsync(permissionId);

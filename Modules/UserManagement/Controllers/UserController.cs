@@ -26,9 +26,14 @@ namespace FootballField.API.Modules.UserManagement.Controllers
         /// Lấy danh sách người dùng với phân trang (chỉ Admin)
         [HttpGet]
         [HasPermission("user.view_all")]
-        public async Task<IActionResult> GetAll([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int pageIndex = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? keyword = null,
+            [FromQuery] string? role = null,
+            [FromQuery] byte? status = null)
         {
-            var (users, totalCount) = await _userService.GetPagedUsersAsync(pageIndex, pageSize);
+            var (users, totalCount) = await _userService.GetPagedUsersAsync(pageIndex, pageSize, keyword, role, status);
             var response = new ApiPagedResponse<UserDto>(users, pageIndex, pageSize, totalCount, "Lấy danh sách người dùng thành công");
             return Ok(response);
         }
