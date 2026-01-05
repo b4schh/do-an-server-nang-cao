@@ -1,0 +1,24 @@
+﻿global using DoAn.Core.Domain.Entities;
+
+global using BookingEntity = DoAn.Core.Domain.Entities.Booking;
+global using ComplexEntity = DoAn.Core.Domain.Entities.Complex;
+global using ComplexImageEntity = DoAn.Core.Domain.Entities.ComplexImage;
+global using FavoriteComplexEntity = DoAn.Core.Domain.Entities.FavoriteComplex;
+global using FieldEntity = DoAn.Core.Domain.Entities.Field;
+global using NotificationEntity = DoAn.Core.Domain.Entities.Notification;
+global using OwnerSettingEntity = DoAn.Core.Domain.Entities.OwnerSetting;
+global using PermissionEntity = DoAn.Core.Domain.Entities.Permission;
+global using ProvinceEntity = DoAn.Core.Domain.Entities.Province;
+global using RefreshTokenEntity = DoAn.Core.Domain.Entities.RefreshToken;
+global using ReviewEntity = DoAn.Core.Domain.Entities.Review;
+global using ReviewHelpfulVoteEntity = DoAn.Core.Domain.Entities.ReviewHelpfulVote;
+global using ReviewImageEntity = DoAn.Core.Domain.Entities.ReviewImage;
+global using RoleEntity = DoAn.Core.Domain.Entities.Role;
+global using RolePermissionEntity = DoAn.Core.Domain.Entities.RolePermission;
+global using SystemConfigEntity = DoAn.Core.Domain.Entities.SystemConfig;
+global using SystemLogEntity = DoAn.Core.Domain.Entities.SystemLog;
+global using TimeSlotEntity = DoAn.Core.Domain.Entities.TimeSlot;
+global using UserEntity = DoAn.Core.Domain.Entities.User;
+global using UserActivityLogEntity = DoAn.Core.Domain.Entities.UserActivityLog;
+global using UserRoleEntity = DoAn.Core.Domain.Entities.UserRole;
+global using WardEntity = DoAn.Core.Domain.Entities.Ward;

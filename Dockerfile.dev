@@ -3,12 +3,21 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0
 WORKDIR /src
 ENV TZ=Asia/Ho_Chi_Minh
 
-# Copy csproj and restore first (clean & correct restore)
-COPY *.csproj .
+# Copy solution file
+COPY *.sln .
+
+# Copy all project files
+COPY src/FootballField.Api/*.csproj ./src/FootballField.Api/
+COPY src/FootballField.Application/*.csproj ./src/FootballField.Application/
+COPY src/FootballField.Domain/*.csproj ./src/FootballField.Domain/
+COPY src/FootballField.Infrastructure/*.csproj ./src/FootballField.Infrastructure/
+
+# Restore dependencies
 RUN dotnet restore
 
-# Now copy all source code
-COPY . .
+# Copy all source code
+COPY src/ ./src/
 
 EXPOSE 8080
+WORKDIR /src/src/FootballField.Api
 CMD ["dotnet", "watch", "run", "--urls=http://0.0.0.0:8080"]

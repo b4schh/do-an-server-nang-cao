@@ -1,18 +1,14 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using System.Data;
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Any;
 using Microsoft.AspNetCore.Http.Features;
 using System.Globalization;
-using Minio;
 using Serilog;
 using Serilog.Sinks.MSSqlServer;
 using Serilog.Events;
 using Serilog.Context;
-
 
 // Shared Components
 using FootballField.API.Shared.Utils;
@@ -21,6 +17,9 @@ using FootballField.API.Shared.Storage;
 
 // Database
 using FootballField.API.Database;
+
+// Infrastructure Layer
+using DoAn.Infrastructure;
 
 // Module Registrations
 using FootballField.API.Modules.AuthManagement;
@@ -129,12 +128,9 @@ Environment.SetEnvironmentVariable("TZ", timeZoneId);
 CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("vi-VN");
 CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("vi-VN");
 
-// Đọc Connection String từ appsettings.json (already read above for Serilog)
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
-
-// ========== ĐĂNG KÝ AUTOMAPPER ==========
-builder.Services.AddAutoMapper(typeof(MappingProfile));
+// ========== ĐĂNG KÝ INFRASTRUCTURE SERVICES ==========
+// Database Context, Repositories, AutoMapper, Storage (MinIO)
+builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // ========== ĐĂNG KÝ MODULE DEPENDENCIES ==========
 // Register all modules with their services and repositories
@@ -154,7 +150,6 @@ builder.Services.AddStatisticsModule();
 builder.Services.AddScoped<JwtHelper>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient(); // For LocationSeeder
-
 builder.Services.AddSingleton(vietnamTimeZone);
 
 // ========== CẤU HÌNH JWT AUTHENTICATION ==========
@@ -239,35 +234,13 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Bind options
+// ========== CẤU HÌNH FILE UPLOAD ==========
 builder.Services.Configure<MinioSettings>(builder.Configuration.GetSection("Minio"));
 
-// File upload limit
 builder.Services.Configure<FormOptions>(o =>
 {
-    o.MultipartBodyLengthLimit = 20_000_000;
+    o.MultipartBodyLengthLimit = 20_000_000; // 20MB
 });
-
-// Đăng ký MinioClient qua DI
-builder.Services.AddSingleton<IMinioClient>(sp =>
-{
-    var cfg = sp.GetRequiredService<IConfiguration>().GetSection("Minio");
-    var endpoint = cfg["Endpoint"]!;
-    var accessKey = cfg["AccessKey"]!;
-    var secretKey = cfg["SecretKey"]!;
-    var withSSL = bool.TryParse(cfg["WithSSL"], out var ssl) && ssl;
-
-    var client = new MinioClient()
-        .WithEndpoint(endpoint)
-        .WithCredentials(accessKey, secretKey);
-
-    if (withSSL) client = client.WithSSL();
-
-    return client.Build();
-});
-
-// Đăng ký storage service
-builder.Services.AddSingleton<IStorageService, MinioStorageService>();
 
 // Cho phép gọi API từ frontend khác domain
 builder.Services.AddCors(options =>

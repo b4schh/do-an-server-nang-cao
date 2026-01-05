@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\DoAn.Core.Domain\DoAn.Core.Domain.csproj" />
+    <ProjectReference Include="..\DoAn.Core.Application\DoAn.Core.Application.csproj" />
+
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
+
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.1" />
+
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
+    <PackageReference Include="Minio" Version="6.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
