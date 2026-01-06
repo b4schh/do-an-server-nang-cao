@@ -185,7 +185,125 @@ public class BookingRepository : GenericRepository<BookingEntity>, IBookingRepos
             .Where(b => b.CustomerId == userId
                      && (b.BookingStatus == BookingStatus.Completed || b.BookingStatus == BookingStatus.Confirmed))
             .OrderByDescending(b => b.BookingDate)
+            .Take(100) // Limit to last 100 bookings for performance
             .ToListAsync();
+    }
+
+    /// <summary>
+    /// Get completed booking counts for multiple complexes (optimized for recommendation)
+    /// OPTIMIZED: Single query with GroupBy at database level
+    /// </summary>
+    public async Task<Dictionary<int, int>> GetComplexBookingCountsAsync(List<int> complexIds)
+    {
+        if (!complexIds.Any())
+            return new Dictionary<int, int>();
+
+        return await _dbSet
+            .Where(b => complexIds.Contains(b.Field.ComplexId) 
+                     && b.BookingStatus == BookingStatus.Completed)
+            .GroupBy(b => b.Field.ComplexId)
+            .Select(g => new { ComplexId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ComplexId, x => x.Count);
+    }
+
+    /// <summary>
+    /// Get booking counts grouped by status (optimized for admin dashboard)
+    /// </summary>
+    public async Task<Dictionary<string, int>> GetBookingCountsByStatusAsync()
+    {
+        return await _dbSet
+            .GroupBy(b => b.BookingStatus)
+            .Select(g => new { Status = g.Key.ToString(), Count = g.Count() })
+            .ToDictionaryAsync(x => x.Status, x => x.Count);
+    }
+
+    /// <summary>
+    /// Get revenue by date range (optimized with database aggregation)
+    /// </summary>
+    public async Task<Dictionary<DateTime, decimal>> GetRevenueByDateRangeAsync(DateTime startDate, DateTime endDate)
+    {
+        return await _dbSet
+            .Where(b => b.BookingDate >= startDate && b.BookingDate <= endDate
+                     && (b.BookingStatus == BookingStatus.Completed 
+                      || b.BookingStatus == BookingStatus.Confirmed 
+                      || b.BookingStatus == BookingStatus.NoShow))
+            .GroupBy(b => b.BookingDate.Date)
+            .Select(g => new 
+            { 
+                Date = g.Key,
+                Revenue = g.Sum(b => b.BookingStatus == BookingStatus.Completed ? b.TotalAmount : b.DepositAmount)
+            })
+            .ToDictionaryAsync(x => x.Date, x => x.Revenue);
+    }
+
+    /// <summary>
+    /// Get top complexes by revenue (optimized with single query)
+    /// </summary>
+    public async Task<List<(int ComplexId, string ComplexName, string OwnerName, int BookingCount, decimal Revenue)>> 
+        GetTopComplexesByRevenueAsync(int limit)
+    {
+        var results = await _dbSet
+            .Include(b => b.Field)
+                .ThenInclude(f => f.Complex)
+            .Include(b => b.Owner)
+            .Where(b => b.Field != null && b.Field.Complex != null)
+            .GroupBy(b => new
+            {
+                ComplexId = b.Field.Complex.Id,
+                ComplexName = b.Field.Complex.Name,
+                OwnerFirstName = b.Owner != null ? b.Owner.FirstName : "",
+                OwnerLastName = b.Owner != null ? b.Owner.LastName : ""
+            })
+            .Select(g => new
+            {
+                g.Key.ComplexId,
+                g.Key.ComplexName,
+                OwnerName = (g.Key.OwnerLastName + " " + g.Key.OwnerFirstName).Trim(),
+                BookingCount = g.Count(),
+                Revenue = g.Where(b => b.BookingStatus == BookingStatus.Completed 
+                               || b.BookingStatus == BookingStatus.Confirmed 
+                               || b.BookingStatus == BookingStatus.NoShow)
+                           .Sum(b => b.BookingStatus == BookingStatus.Completed ? b.TotalAmount : b.DepositAmount)
+            })
+            .OrderByDescending(x => x.Revenue)
+            .Take(limit)
+            .ToListAsync();
+
+        return results.Select(r => (r.ComplexId, r.ComplexName, string.IsNullOrEmpty(r.OwnerName) ? "N/A" : r.OwnerName, r.BookingCount, r.Revenue)).ToList();
+    }
+
+    /// <summary>
+    /// Get top customers by total spending (optimized with single query)
+    /// </summary>
+    public async Task<List<(int CustomerId, string CustomerName, string Phone, int BookingCount, decimal TotalSpent)>> 
+        GetTopCustomersBySpendingAsync(int limit)
+    {
+        var results = await _dbSet
+            .Include(b => b.Customer)
+            .Where(b => b.Customer != null)
+            .GroupBy(b => new
+            {
+                CustomerId = b.CustomerId,
+                FirstName = b.Customer!.FirstName,
+                LastName = b.Customer.LastName,
+                Phone = b.Customer.Phone
+            })
+            .Select(g => new
+            {
+                g.Key.CustomerId,
+                CustomerName = (g.Key.LastName + " " + g.Key.FirstName).Trim(),
+                Phone = g.Key.Phone ?? "N/A",
+                BookingCount = g.Count(),
+                TotalSpent = g.Where(b => b.BookingStatus == BookingStatus.Completed 
+                                  || b.BookingStatus == BookingStatus.Confirmed 
+                                  || b.BookingStatus == BookingStatus.NoShow)
+                              .Sum(b => b.BookingStatus == BookingStatus.Completed ? b.TotalAmount : b.DepositAmount)
+            })
+            .OrderByDescending(x => x.TotalSpent)
+            .Take(limit)
+            .ToListAsync();
+
+        return results.Select(r => (r.CustomerId, r.CustomerName, r.Phone, r.BookingCount, r.TotalSpent)).ToList();
     }
     
     // Admin only - Get all bookings with navigation properties

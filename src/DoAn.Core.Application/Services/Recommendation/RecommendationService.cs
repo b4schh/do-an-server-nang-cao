@@ -111,18 +111,19 @@ public class RecommendationService : IRecommendationService
             };
         }
 
+        // Query booking counts directly from database (OPTIMIZED)
+        var complexIds = complexes.Select(c => c.Id).ToList();
+        var bookingCounts = await _bookingRepository.GetComplexBookingCountsAsync(complexIds);
+        
         // Tính popularity score cho mỗi Complex
         var random = new Random();
         var scoredComplexes = complexes.Select(complex => 
         {
-            var totalBookings = complex.Fields
-                .SelectMany(f => f.Bookings)
-                .Count(b => b.BookingStatus == BookingStatus.Completed);
-            
+            var totalBookings = bookingCounts.ContainsKey(complex.Id) ? bookingCounts[complex.Id] : 0;
             var avgRating = GetAverageRating(complex.Id);
             
             // Công thức popularity: 0.6 * normalized_booking + 0.4 * normalized_rating
-            var maxBooking = complexes.Max(c => c.Fields.SelectMany(f => f.Bookings).Count(b => b.BookingStatus == BookingStatus.Completed));
+            var maxBooking = bookingCounts.Values.Any() ? bookingCounts.Values.Max() : 0;
             var normalizedBooking = maxBooking > 0 ? (double)totalBookings / maxBooking : 0;
             var normalizedRating = avgRating / 5.0;
             
@@ -149,13 +150,15 @@ public class RecommendationService : IRecommendationService
     #region Content-based User Recommendation (User có lịch sử)
 
     /// <summary>
-    /// STRATEGY 3: Content-Based Filtering
+    /// STRATEGY 3: Content-Based Filtering with 3-Tier Location Priority
     /// Gợi ý cá nhân hóa dựa trên lịch sử booking của user
+    /// 3-TIER SYSTEM: Same ward (100%) > Same province (85%) > Other province (60%)
     /// </summary>
     public async Task<RecommendationResponse> GetPersonalizedRecommendationsAsync(
         int userId, 
         int topK = 10, 
-        string? province = null)
+        string? province = null,
+        string? ward = null)
     {
         // Lấy lịch sử booking của user
         var userBookings = (await _bookingRepository.GetUserBookingHistoryAsync(userId)).ToList();
@@ -163,25 +166,25 @@ public class RecommendationService : IRecommendationService
         if (!userBookings.Any())
         {
             // Fallback to location-based nếu user chưa có booking
-            return await GetRecommendationsForNewUserAsync(province, null, topK);
+            return await GetRecommendationsForNewUserAsync(province, ward, topK);
         }
 
-        // Tạo user vector từ các Complex đã đặt
+        // Tạo user vector từ các Complex đã đặt (KHÔNG bao gồm location features)
         var bookedComplexes = userBookings
             .Select(b => b.Field.Complex)
             .DistinctBy(c => c.Id)
             .ToList();
         
-        var userVector = CreateUserVector(bookedComplexes);
+        var userVector = CreateUserVectorWithoutLocation(bookedComplexes);
 
         // Lấy tất cả Complex chưa từng đặt
         var bookedComplexIds = bookedComplexes.Select(c => c.Id).ToHashSet();
         
-        var candidateComplexes = (await _complexRepository.GetAllActiveComplexesWithDetailsAsync(province))
+        var allCandidates = (await _complexRepository.GetAllActiveComplexesWithDetailsAsync(null))
             .Where(c => !bookedComplexIds.Contains(c.Id))
             .ToList();
 
-        if (!candidateComplexes.Any())
+        if (!allCandidates.Any())
         {
             return new RecommendationResponse
             {
@@ -191,19 +194,90 @@ public class RecommendationService : IRecommendationService
             };
         }
 
-        // Tính similarity giữa user vector và từng Complex
-        var random = new Random();
-        var recommendations = candidateComplexes
-            .Select(complex => 
+        // 3-TIER LOCATION PRIORITY SYSTEM
+        var tier1SameWard = new List<ComplexEntity>();
+        var tier2SameProvince = new List<ComplexEntity>();
+        var tier3OtherProvince = new List<ComplexEntity>();
+
+        if (!string.IsNullOrEmpty(province))
+        {
+            foreach (var complex in allCandidates)
             {
-                var complexVector = VectorizeComplex(complex);
-                var similarity = CosineSimilarity(userVector, complexVector);
-                return (complex, similarity, randomOrder: random.Next());
-            })
-            .OrderByDescending(x => x.similarity)
-            .ThenBy(x => x.randomOrder)
+                if (complex.Province == province)
+                {
+                    // Same province - check ward
+                    if (!string.IsNullOrEmpty(ward) && complex.Ward == ward)
+                    {
+                        tier1SameWard.Add(complex); // TIER 1: Same ward (100% score)
+                    }
+                    else
+                    {
+                        tier2SameProvince.Add(complex); // TIER 2: Same province, diff ward (85% score)
+                    }
+                }
+                else
+                {
+                    tier3OtherProvince.Add(complex); // TIER 3: Other province (60% score)
+                }
+            }
+        }
+        else
+        {
+            // No location filter - treat all as tier 1
+            tier1SameWard = allCandidates;
+        }
+
+        var random = new Random();
+        var allRecommendations = new List<(ComplexEntity complex, double score, int tier)>();
+
+        // TIER 1: Same ward - NO penalty (100%)
+        if (tier1SameWard.Any())
+        {
+            var tier1Recs = tier1SameWard
+                .Select(complex => 
+                {
+                    var complexVector = VectorizeComplexWithoutLocation(complex);
+                    var similarity = CosineSimilarity(userVector, complexVector);
+                    return (complex, score: similarity, tier: 1);
+                })
+                .ToList();
+            allRecommendations.AddRange(tier1Recs);
+        }
+
+        // TIER 2: Same province, different ward - 15% penalty (85%)
+        if (tier2SameProvince.Any())
+        {
+            var tier2Recs = tier2SameProvince
+                .Select(complex => 
+                {
+                    var complexVector = VectorizeComplexWithoutLocation(complex);
+                    var similarity = CosineSimilarity(userVector, complexVector);
+                    return (complex, score: similarity * 0.85, tier: 2);
+                })
+                .ToList();
+            allRecommendations.AddRange(tier2Recs);
+        }
+
+        // TIER 3: Other province - 40% penalty (60%)
+        if (tier3OtherProvince.Any())
+        {
+            var tier3Recs = tier3OtherProvince
+                .Select(complex => 
+                {
+                    var complexVector = VectorizeComplexWithoutLocation(complex);
+                    var similarity = CosineSimilarity(userVector, complexVector);
+                    return (complex, score: similarity * 0.60, tier: 3);
+                })
+                .ToList();
+            allRecommendations.AddRange(tier3Recs);
+        }
+
+        // Sort by score (with tier priority already built-in), then random for ties
+        var recommendations = allRecommendations
+            .OrderByDescending(x => x.score)
+            .ThenBy(x => random.Next())
             .Take(topK)
-            .Select(x => MapToRecommendationDto(x.complex, x.similarity))
+            .Select(x => MapToRecommendationDto(x.complex, x.score))
             .ToList();
 
         return new RecommendationResponse
@@ -228,10 +302,10 @@ public class RecommendationService : IRecommendationService
         string? ward, 
         int topK = 10)
     {
-        // Nếu có userId → thử personalized
+        // Nếu có userId → thử personalized (with 3-tier location priority)
         if (userId.HasValue)
         {
-            var personalizedResult = await GetPersonalizedRecommendationsAsync(userId.Value, topK, province);
+            var personalizedResult = await GetPersonalizedRecommendationsAsync(userId.Value, topK, province, ward);
             
             if (personalizedResult.Complexes.Any())
             {
@@ -248,7 +322,62 @@ public class RecommendationService : IRecommendationService
     #region Helper Methods - Vector Operations
 
     /// <summary>
-    /// Vector hóa Complex thành feature vector
+    /// Vector hóa Complex thành feature vector (9 features - KHÔNG BAO GỒM PROVINCE)
+    /// Dùng cho Personalized recommendation để tránh bias location từ booking history
+    /// Vector = [has_field_5, has_field_7, has_field_11, has_natural, has_artificial, 
+    ///          avg_min_price, avg_max_price, total_bookings, avg_rating]
+    /// </summary>
+    private double[] VectorizeComplexWithoutLocation(ComplexEntity complex)
+    {
+        var activeFields = complex.Fields.Where(f => f.IsActive && !f.IsDeleted).ToList();
+
+        // Feature 1-3: Field types available (one-hot)
+        var hasField5 = activeFields.Any(f => f.FieldSize == "5") ? 1.0 : 0.0;
+        var hasField7 = activeFields.Any(f => f.FieldSize == "7") ? 1.0 : 0.0;
+        var hasField11 = activeFields.Any(f => f.FieldSize == "11") ? 1.0 : 0.0;
+
+        // Feature 4-5: Surface types (one-hot)
+        var hasNatural = activeFields.Any(f => f.SurfaceType?.ToLower().Contains("tự nhiên") == true) ? 1.0 : 0.0;
+        var hasArtificial = activeFields.Any(f => f.SurfaceType?.ToLower().Contains("nhân tạo") == true) ? 1.0 : 0.0;
+
+        // Feature 6-7: Price range
+        var allPrices = activeFields
+            .SelectMany(f => f.TimeSlots.Select(ts => ts.Price))
+            .Where(p => p > 0)
+            .ToList();
+
+        var avgMinPrice = allPrices.Any() ? (double)allPrices.Min() : 0;
+        var avgMaxPrice = allPrices.Any() ? (double)allPrices.Max() : 0;
+        var normalizedMinPrice = Math.Min(avgMinPrice / 1000000, 1.0); // Max 1M
+        var normalizedMaxPrice = Math.Min(avgMaxPrice / 1000000, 1.0);
+
+        // Feature 8: Total bookings (popularity)
+        var totalBookings = activeFields
+            .SelectMany(f => f.Bookings)
+            .Count(b => b.BookingStatus == BookingStatus.Completed);
+        var normalizedBookings = Math.Min(totalBookings / 100.0, 1.0); // Scale to 100
+
+        // Feature 9: Average rating
+        var avgRating = GetAverageRating(complex.Id);
+        var normalizedRating = avgRating / 5.0;
+
+        return new double[] 
+        { 
+            hasField5,
+            hasField7,
+            hasField11,
+            hasNatural,
+            hasArtificial,
+            normalizedMinPrice,
+            normalizedMaxPrice,
+            normalizedBookings,
+            normalizedRating
+        };
+    }
+
+    /// <summary>
+    /// Vector hóa Complex thành feature vector (10 features - CÓ PROVINCE)
+    /// Dùng cho Similar Complex recommendation
     /// Vector = [has_field_5, has_field_7, has_field_11, has_natural, has_artificial, 
     ///          avg_min_price, avg_max_price, total_bookings, avg_rating, province_code]
     /// </summary>
@@ -305,7 +434,29 @@ public class RecommendationService : IRecommendationService
     }
 
     /// <summary>
-    /// Tạo user vector từ trung bình các Complex đã đặt
+    /// Tạo user vector từ trung bình các Complex đã đặt (KHÔNG có province)
+    /// Dùng cho Personalized recommendation
+    /// </summary>
+    private double[] CreateUserVectorWithoutLocation(List<ComplexEntity> bookedComplexes)
+    {
+        if (!bookedComplexes.Any())
+            return new double[9]; // 9 features without province
+
+        var vectors = bookedComplexes.Select(VectorizeComplexWithoutLocation).ToList();
+        var dimension = vectors[0].Length;
+        var userVector = new double[dimension];
+
+        for (int i = 0; i < dimension; i++)
+        {
+            userVector[i] = vectors.Average(v => v[i]);
+        }
+
+        return userVector;
+    }
+
+    /// <summary>
+    /// Tạo user vector từ trung bình các Complex đã đặt (CÓ province)
+    /// Dùng cho Similar Complex recommendation
     /// </summary>
     private double[] CreateUserVector(List<ComplexEntity> bookedComplexes)
     {

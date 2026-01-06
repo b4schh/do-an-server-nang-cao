@@ -22,4 +22,16 @@ public interface IBookingRepository : IGenericRepository<BookingEntity>
     
     // Recommendation methods
     Task<IEnumerable<BookingEntity>> GetUserBookingHistoryAsync(int userId);
+    
+    /// <summary>
+    /// Get completed booking counts for multiple complexes (optimized for recommendation service)
+    /// Returns: Dictionary<ComplexId, CompletedBookingCount>
+    /// </summary>
+    Task<Dictionary<int, int>> GetComplexBookingCountsAsync(List<int> complexIds);
+    
+    // Statistics methods - Optimized for dashboard
+    Task<Dictionary<string, int>> GetBookingCountsByStatusAsync();
+    Task<Dictionary<DateTime, decimal>> GetRevenueByDateRangeAsync(DateTime startDate, DateTime endDate);
+    Task<List<(int ComplexId, string ComplexName, string OwnerName, int BookingCount, decimal Revenue)>> GetTopComplexesByRevenueAsync(int limit);
+    Task<List<(int CustomerId, string CustomerName, string Phone, int BookingCount, decimal TotalSpent)>> GetTopCustomersBySpendingAsync(int limit);
 }

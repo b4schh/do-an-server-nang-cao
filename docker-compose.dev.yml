@@ -5,8 +5,8 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./src:/src/src  # Mount source code vào đúng thư mục
-      - /src/src/FootballField.Api/bin  # Exclude bin
-      - /src/src/FootballField.Api/obj  # Exclude obj
+      - /src/src/DoAn.Presentation.Api/bin  # Exclude bin
+      - /src/src/DoAn.Presentation.Api/obj  # Exclude obj
     ports:
       - "8083:8080"
     environment:

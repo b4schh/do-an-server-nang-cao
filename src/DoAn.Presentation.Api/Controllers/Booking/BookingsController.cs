@@ -108,11 +108,15 @@ namespace FootballField.API.Modules.BookingManagement.Controllers
         // GET api/bookings/my-bookings - Khách xem booking của mình
         [HttpGet("my-bookings")]
         [HasPermission("booking.view_own")]
-        public async Task<IActionResult> GetMyBookings([FromQuery] BookingStatus? status = null)
+        public async Task<IActionResult> GetMyBookings(
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] BookingStatus? status = null)
         {
             var customerId = GetCurrentUserId();
-            var bookings = await _bookingService.GetBookingsForCustomerAsync(customerId, status);
-            return Ok(ApiResponse<IEnumerable<BookingDto>>.Ok(bookings, "Lấy danh sách booking thành công"));
+            var (bookings, totalRecords) = await _bookingService.GetBookingsForCustomerAsync(customerId, pageIndex, pageSize, status);
+            var response = new ApiPagedResponse<BookingDto>(bookings, pageIndex, pageSize, totalRecords, "Lấy danh sách booking thành công");
+            return Ok(response);
         }
 
         // GET api/bookings/owner-bookings - Chủ sân xem booking của mình

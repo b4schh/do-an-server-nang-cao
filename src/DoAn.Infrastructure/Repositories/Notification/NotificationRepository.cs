@@ -68,42 +68,28 @@ public class NotificationRepository : GenericRepository<NotificationEntity>, INo
         if (notificationIds == null || notificationIds.Count == 0)
             return 0;
 
-        var notifications = await _dbSet
-            .Where(n => n.UserId == userId && notificationIds.Contains(n.Id) && !n.IsRead)
-            .ToListAsync();
-
-        if (notifications.Count == 0)
-            return 0;
-
+        // OPTIMIZED: Use ExecuteUpdateAsync instead of loading and updating
         var now = TimeZoneHelper.VietnamNow;
-        foreach (var notification in notifications)
-        {
-            notification.IsRead = true;
-            notification.ReadAt = now;
-        }
+        var updatedCount = await _dbSet
+            .Where(n => n.UserId == userId && notificationIds.Contains(n.Id) && !n.IsRead)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(n => n.IsRead, true)
+                .SetProperty(n => n.ReadAt, now));
 
-        await UpdateRangeAsync(notifications);
-        return notifications.Count;
+        return updatedCount;
     }
 
     public async Task<int> MarkAllAsReadAsync(int userId)
     {
-        var unreadNotifications = await _dbSet
-            .Where(n => n.UserId == userId && !n.IsRead)
-            .ToListAsync();
-
-        if (unreadNotifications.Count == 0)
-            return 0;
-
+        // OPTIMIZED: Use ExecuteUpdateAsync for bulk update
         var now = TimeZoneHelper.VietnamNow;
-        foreach (var notification in unreadNotifications)
-        {
-            notification.IsRead = true;
-            notification.ReadAt = now;
-        }
+        var updatedCount = await _dbSet
+            .Where(n => n.UserId == userId && !n.IsRead)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(n => n.IsRead, true)
+                .SetProperty(n => n.ReadAt, now));
 
-        await UpdateRangeAsync(unreadNotifications);
-        return unreadNotifications.Count;
+        return updatedCount;
     }
 
     public async Task<bool> DeleteAsync(int userId, int notificationId)

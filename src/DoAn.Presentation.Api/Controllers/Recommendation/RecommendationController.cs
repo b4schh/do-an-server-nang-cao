@@ -92,11 +92,13 @@ public class RecommendationController : ControllerBase
     /// Ví dụ:
     /// - Tất cả: GET /api/recommendations/personalized
     /// - Lọc tỉnh: GET /api/recommendations/personalized?province=Hồ Chí Minh
+    /// - Lọc phường: GET /api/recommendations/personalized?province=Hồ Chí Minh&ward=Phường Bến Nghé
     /// </remarks>
     [HttpGet("personalized")]
     [Authorize]
     public async Task<IActionResult> GetPersonalizedRecommendations(
         [FromQuery] string? province,
+        [FromQuery] string? ward,
         [FromQuery] int topK = 10)
     {
         try
@@ -107,7 +109,7 @@ public class RecommendationController : ControllerBase
                 return Unauthorized(ApiResponse<string>.Fail("Unauthorized", 401));
             }
 
-            var result = await _recommendationService.GetPersonalizedRecommendationsAsync(userId, topK, province);
+            var result = await _recommendationService.GetPersonalizedRecommendationsAsync(userId, topK, province, ward);
             
             return Ok(ApiResponse<RecommendationResponse>.Ok(result, "Lấy gợi ý thành công"));
         }

@@ -136,21 +136,21 @@ public class FieldRepository : GenericRepository<FieldEntity>, IFieldRepository
 
     public async Task<FieldEntity?> GetFieldWithDetailsForRecommendationAsync(int fieldId)
     {
+        // OPTIMIZED: Don't include Bookings - query counts separately if needed
         return await _dbSet
             .Include(f => f.Complex)
                 .ThenInclude(c => c.ComplexImages)
             .Include(f => f.TimeSlots)
-            .Include(f => f.Bookings.Where(b => b.BookingStatus == BookingStatus.Completed))
             .FirstOrDefaultAsync(f => f.Id == fieldId && f.IsActive && !f.IsDeleted);
     }
 
     public async Task<IEnumerable<FieldEntity>> GetAllActiveFieldsWithDetailsAsync(string? province = null)
     {
+        // OPTIMIZED: Don't include Bookings navigation property - query counts separately
         var query = _dbSet
             .Include(f => f.Complex)
                 .ThenInclude(c => c.ComplexImages)
             .Include(f => f.TimeSlots)
-            .Include(f => f.Bookings.Where(b => b.BookingStatus == BookingStatus.Completed))
             .Where(f => f.IsActive 
                      && !f.IsDeleted 
                      && f.Complex.IsActive 

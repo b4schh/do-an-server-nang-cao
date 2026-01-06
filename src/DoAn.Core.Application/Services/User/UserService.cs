@@ -35,15 +35,6 @@ namespace DoAn.Core.Application.Services.User
             var users = await _userRepository.GetAllUsersWithRolesAsync();
             var userDtos = _mapper.Map<IEnumerable<UserDto>>(users);
             
-            // Map AvatarUrl to full URL
-            foreach (var dto in userDtos)
-            {
-                if (!string.IsNullOrEmpty(dto.AvatarUrl))
-                {
-                    dto.AvatarUrl = _storageService.GetFullUrl(dto.AvatarUrl);
-                }
-            }
-            
             return userDtos;
         }
 
@@ -51,15 +42,6 @@ namespace DoAn.Core.Application.Services.User
         {
             var (users, totalCount) = await _userRepository.GetPagedUsersWithFiltersAsync(pageIndex, pageSize, keyword, role, status);
             var userDtos = _mapper.Map<IEnumerable<UserDto>>(users).ToList();
-            
-            // Map AvatarUrl to full URL
-            foreach (var dto in userDtos)
-            {
-                if (!string.IsNullOrEmpty(dto.AvatarUrl))
-                {
-                    dto.AvatarUrl = _storageService.GetFullUrl(dto.AvatarUrl);
-                }
-            }
             
             return (userDtos, totalCount);
         }
@@ -71,12 +53,6 @@ namespace DoAn.Core.Application.Services.User
             
             var dto = _mapper.Map<UserDto>(user);
             
-            // Map AvatarUrl to full URL
-            if (!string.IsNullOrEmpty(dto.AvatarUrl))
-            {
-                dto.AvatarUrl = _storageService.GetFullUrl(dto.AvatarUrl);
-            }
-            
             return dto;
         }
 
@@ -87,12 +63,7 @@ namespace DoAn.Core.Application.Services.User
             
             var dto = _mapper.Map<UserDto>(user);
             
-            // Map AvatarUrl to full URL
-            if (!string.IsNullOrEmpty(dto.AvatarUrl))
-            {
-                dto.AvatarUrl = _storageService.GetFullUrl(dto.AvatarUrl);
-            }
-            
+
             return dto;
         }
 
@@ -182,12 +153,6 @@ namespace DoAn.Core.Application.Services.User
 
             var dto = _mapper.Map<UserResponseDto>(user);
             
-            // Map AvatarUrl to full URL
-            if (!string.IsNullOrEmpty(dto.AvatarUrl))
-            {
-                dto.AvatarUrl = _storageService.GetFullUrl(dto.AvatarUrl);
-            }
-            
             return dto;
         }
 
@@ -221,12 +186,6 @@ namespace DoAn.Core.Application.Services.User
             await _userRepository.UpdateAsync(user);
 
             var responseDto = _mapper.Map<UserResponseDto>(user);
-            
-            // Map AvatarUrl to full URL
-            if (!string.IsNullOrEmpty(responseDto.AvatarUrl))
-            {
-                responseDto.AvatarUrl = _storageService.GetFullUrl(responseDto.AvatarUrl);
-            }
             
             return responseDto;
         }

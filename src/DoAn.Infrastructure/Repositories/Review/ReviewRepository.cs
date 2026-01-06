@@ -59,23 +59,27 @@ public class ReviewRepository : GenericRepository<ReviewEntity>, IReviewReposito
 
     public async Task<double> GetAverageRatingByFieldIdAsync(int fieldId)
     {
-        var reviews = await _dbSet
+        // OPTIMIZED: Calculate average at database level
+        var average = await _dbSet
             .Include(r => r.Booking)
             .Where(r => r.Booking.FieldId == fieldId && r.IsVisible && !r.IsDeleted)
-            .ToListAsync();
+            .Select(r => (double?)r.Rating)
+            .AverageAsync();
 
-        return reviews.Any() ? reviews.Average(r => r.Rating) : 0;
+        return average ?? 0;
     }
 
     public async Task<double> GetAverageRatingByComplexIdAsync(int complexId)
     {
-        var reviews = await _dbSet
+        // OPTIMIZED: Calculate average at database level
+        var average = await _dbSet
             .Include(r => r.Booking)
                 .ThenInclude(b => b.Field)
             .Where(r => r.Booking.Field.ComplexId == complexId && r.IsVisible && !r.IsDeleted)
-            .ToListAsync();
+            .Select(r => (double?)r.Rating)
+            .AverageAsync();
 
-        return reviews.Any() ? reviews.Average(r => r.Rating) : 0;
+        return average ?? 0;
     }
 
     public async Task<ReviewEntity?> GetByBookingIdAsync(int bookingId)
@@ -150,25 +154,31 @@ public class ReviewRepository : GenericRepository<ReviewEntity>, IReviewReposito
 
     public async Task<ReviewStatisticsDto> GetReviewStatisticsAsync(int complexId)
     {
-        var reviews = await _dbSet
+        // OPTIMIZED: Aggregate at database level with GroupBy
+        var query = _dbSet
             .Include(r => r.Booking)
                 .ThenInclude(b => b.Field)
-            .Where(r => r.Booking.Field.ComplexId == complexId && r.IsVisible && !r.IsDeleted)
-            .ToListAsync();
+            .Where(r => r.Booking.Field.ComplexId == complexId && r.IsVisible && !r.IsDeleted);
+
+        var totalCount = await query.CountAsync();
+        var averageRating = await query.Select(r => (double?)r.Rating).AverageAsync() ?? 0;
+        
+        // Get rating distribution with single GroupBy query
+        var ratingCounts = await query
+            .GroupBy(r => r.Rating)
+            .Select(g => new { Rating = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => (int)x.Rating, x => x.Count);
 
         var statistics = new ReviewStatisticsDto
         {
-            TotalReviews = reviews.Count,
-            AverageRating = reviews.Any() ? reviews.Average(r => r.Rating) : 0
+            TotalReviews = totalCount,
+            AverageRating = averageRating
         };
 
-        // Count ratings
-        foreach (var review in reviews)
+        // Initialize all ratings (1-5) with counts from DB or 0
+        for (int i = 1; i <= 5; i++)
         {
-            if (statistics.RatingCounts.ContainsKey(review.Rating))
-            {
-                statistics.RatingCounts[review.Rating]++;
-            }
+            statistics.RatingCounts[i] = ratingCounts.ContainsKey(i) ? ratingCounts[i] : 0;
         }
 
         return statistics;

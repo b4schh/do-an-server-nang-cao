@@ -508,10 +508,18 @@ namespace DoAn.Core.Application.Services.Booking
             return await MapToBookingDto(booking);
         }
 
-        public async Task<IEnumerable<BookingDto>> GetBookingsForCustomerAsync(int customerId, BookingStatus? status = null)
+        public async Task<(IEnumerable<BookingDto> bookings, int totalRecords)> GetBookingsForCustomerAsync(int customerId, int pageIndex, int pageSize, BookingStatus? status = null)
         {
-            var bookings = await _bookingRepository.GetByCustomerAsync(customerId, status);
-            return bookings.Select(MapToBookingDtoSync);
+            var allBookings = await _bookingRepository.GetByCustomerAsync(customerId, status);
+            var totalRecords = allBookings.Count();
+            
+            var paginatedBookings = allBookings
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToBookingDtoSync)
+                .ToList();
+            
+            return (paginatedBookings, totalRecords);
         }
 
         public async Task<(IEnumerable<BookingDto> bookings, int totalRecords)> GetBookingsForOwnerAsync(int ownerId, int pageIndex, int pageSize, BookingStatus? status = null)

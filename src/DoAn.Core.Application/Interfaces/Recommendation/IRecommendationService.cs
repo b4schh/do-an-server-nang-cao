@@ -17,10 +17,11 @@ public interface IRecommendationService
     Task<RecommendationResponse> GetRecommendationsForNewUserAsync(string? province, string? ward, int topK = 10);
 
     /// <summary>
-    /// Gợi ý Complex cá nhân hóa dựa trên Content-Based Filtering
+    /// Gợi ý Complex cá nhân hóa dựa trên Content-Based Filtering với 3-Tier Location Priority
     /// Áp dụng: User đã có lịch sử booking
+    /// 3-TIER: Same ward (100%) > Same province (85%) > Other province (60%)
     /// </summary>
-    Task<RecommendationResponse> GetPersonalizedRecommendationsAsync(int userId, int topK = 10, string? province = null);
+    Task<RecommendationResponse> GetPersonalizedRecommendationsAsync(int userId, int topK = 10, string? province = null, string? ward = null);
     
     /// <summary>
     /// Smart recommendation - Tự động chọn strategy phù hợp
