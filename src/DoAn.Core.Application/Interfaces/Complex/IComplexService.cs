@@ -17,7 +17,8 @@ public interface IComplexService
     Task UpdateComplexAsync(int id, UpdateComplexDto updateComplexDto);
     Task SoftDeleteComplexAsync(int id);
     Task ApproveComplexAsync(int id);
-    Task RejectComplexAsync(int id);
+    Task RejectComplexAsync(int id, string? reason = null);
+    Task ResubmitComplexAsync(int id);
     Task<ComplexFullDetailsDto?> GetComplexWithFullDetailsAsync(int id, DateTime date);
     /// <summary>
     /// Lấy thông tin complex với availability của từng field theo từng ngày trong khoảng thời gian
@@ -45,4 +46,14 @@ public interface IComplexService
     /// Bulk setup: Create complex with multiple fields and timeslots in one transaction
     /// </summary>
     Task<ComplexDto> BulkSetupComplexAsync(BulkSetupComplexDto bulkSetupDto, int ownerId);
+
+    /// <summary>
+    /// Admin only - Get all complexes without filters (pending, approved, rejected)
+    /// </summary>
+    Task<(IEnumerable<ComplexDto> complexes, int totalCount)> GetAllComplexesForAdminAsync(int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Admin only - Get complex detail with rating, review count, images, and fields
+    /// </summary>
+    Task<AdminComplexDetailDto?> GetComplexDetailForAdminAsync(int id);
 }

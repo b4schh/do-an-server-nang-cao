@@ -7,6 +7,7 @@ public interface IUserRepository : IGenericRepository<UserEntity>
     Task<UserEntity?> GetByEmailAsync(string email);
     Task<UserEntity?> GetByPhoneAsync(string phone);
     Task<bool> EmailExistsAsync(string email);
+    Task<bool> PhoneExistsAsync(string phone);
     Task<UserEntity?> GetUserByIdWithRoleAsync(int userId);
     Task<IEnumerable<UserEntity>> GetAllUsersWithRolesAsync();
     Task<UserEntity?> GetByIdWithRolesAsync(int userId);

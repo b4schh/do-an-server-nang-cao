@@ -97,6 +97,17 @@ public class ComplexRepository : GenericRepository<ComplexEntity>, IComplexRepos
         return null;
     }
 
+    // Admin only - Get complex with fields without bank info check
+    public async Task<ComplexEntity?> GetComplexWithFieldsForAdminAsync(int complexId)
+    {
+        var complex = await _dbSet
+            .Include(c => c.Fields.Where(f => !f.IsDeleted))
+            .Include(c => c.ComplexImages)
+            .FirstOrDefaultAsync(c => c.Id == complexId && !c.IsDeleted);
+
+        return complex;
+    }
+
     public async Task<ComplexEntity?> GetComplexWithFullDetailsAsync(int complexId)
     {
         var complex = await _dbSet
@@ -141,6 +152,23 @@ public class ComplexRepository : GenericRepository<ComplexEntity>, IComplexRepos
 
         // Map kết quả
         return complexes.Select(c => (c, ownerSettings.Contains(c.OwnerId)));
+    }
+
+    // Admin only - Get all complexes without filters (except IsDeleted)
+    public async Task<(IEnumerable<ComplexEntity> complexes, int totalCount)> GetAllComplexesForAdminAsync(int pageIndex, int pageSize)
+    {
+        var query = _dbSet
+            .Include(c => c.ComplexImages)
+            .Where(c => !c.IsDeleted)
+            .OrderByDescending(c => c.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+        var complexes = await query
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (complexes, totalCount);
     }
 }
 

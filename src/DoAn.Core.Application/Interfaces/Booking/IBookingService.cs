@@ -17,4 +17,16 @@ public interface IBookingService
     Task<BookingDto?> GetBookingByIdAsync(int id);
     Task ProcessExpiredBookingsAsync();
     Task AdminForceCompleteBookingAsync(int bookingId);
+    
+    // Admin only - Get all bookings with filters
+    Task<(IEnumerable<BookingDto> bookings, int totalRecords)> GetAllBookingsForAdminAsync(
+        int pageIndex, 
+        int pageSize, 
+        BookingStatus? status = null,
+        int? complexId = null,
+        int? ownerId = null,
+        int? customerId = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        string? searchTerm = null);
 }

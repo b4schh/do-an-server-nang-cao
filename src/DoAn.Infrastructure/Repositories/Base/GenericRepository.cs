@@ -18,6 +18,11 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     }
 
     // Query methods
+    public virtual IQueryable<T> GetQueryable()
+    {
+        return _dbSet.AsQueryable();
+    }
+
     public virtual async Task<IEnumerable<T>> GetAllAsync()
     {
         return await _dbSet.ToListAsync();

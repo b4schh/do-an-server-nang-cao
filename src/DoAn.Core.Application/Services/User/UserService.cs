@@ -99,15 +99,23 @@ namespace DoAn.Core.Application.Services.User
         public async Task<UserDto> CreateUserAsync(CreateUserDto createUserDto)
         {
             var user = _mapper.Map<UserEntity>(createUserDto);
+            
+            // Hash password trước khi lưu
+            user.Password = _authService.HashPassword(createUserDto.Password);
+            
             // CreatedAt và UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
-            // Không cần set thủ công nữa
-
             var created = await _userRepository.AddAsync(user);
             
-            _logger.LogInformation("Tạo user mới thành công - User ID: {UserId}, Email: {Email}, LastName: {LastName}, FirstName: {FirstName}",
-                created.Id, created.Email, created.LastName, created.FirstName);
+            // Gán role cho user mới
+            await _userRepository.AddUserRoleAsync(created.Id, createUserDto.RoleId);
             
-            return _mapper.Map<UserDto>(created);
+            // Reload user với UserRoles để map sang DTO
+            var userWithRoles = await _userRepository.GetByIdWithRolesAsync(created.Id);
+            
+            _logger.LogInformation("Tạo user mới thành công - User ID: {UserId}, Email: {Email}, LastName: {LastName}, FirstName: {FirstName}, RoleId: {RoleId}",
+                created.Id, created.Email, created.LastName, created.FirstName, createUserDto.RoleId);
+            
+            return _mapper.Map<UserDto>(userWithRoles);
         }
 
         public async Task UpdateUserAsync(int id, UpdateUserDto updateUserDto)
@@ -151,6 +159,11 @@ namespace DoAn.Core.Application.Services.User
         public async Task<bool> EmailExistsAsync(string email)
         {
             return await _userRepository.EmailExistsAsync(email);
+        }
+
+        public async Task<bool> PhoneExistsAsync(string phone)
+        {
+            return await _userRepository.PhoneExistsAsync(phone);
         }
 
         

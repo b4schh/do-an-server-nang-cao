@@ -150,5 +150,28 @@ namespace FootballField.API.Modules.BookingManagement.Controllers
 
             return Ok(ApiResponse<BookingDto>.Ok(booking, "Lấy thông tin booking thành công"));
         }
+
+        // GET api/bookings/admin/all - Admin xem tất cả bookings với filters
+        [HttpGet("admin/all")]
+        [HasPermission("booking.view_all")]
+        public async Task<IActionResult> GetAllBookingsForAdmin(
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] BookingStatus? status = null,
+            [FromQuery] int? complexId = null,
+            [FromQuery] int? ownerId = null,
+            [FromQuery] int? customerId = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] string? searchTerm = null)
+        {
+            var (bookings, totalRecords) = await _bookingService.GetAllBookingsForAdminAsync(
+                pageIndex, pageSize, status, complexId, ownerId, customerId, fromDate, toDate, searchTerm);
+
+            var response = new ApiPagedResponse<BookingDto>(
+                bookings, pageIndex, pageSize, totalRecords, "Lấy danh sách booking thành công");
+
+            return Ok(response);
+        }
     }
 }

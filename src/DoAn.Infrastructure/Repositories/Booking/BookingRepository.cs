@@ -175,4 +175,44 @@ public class BookingRepository : GenericRepository<BookingEntity>, IBookingRepos
             .Where(b => b.Field.Complex.OwnerId == ownerId)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<BookingEntity>> GetUserBookingHistoryAsync(int userId)
+    {
+        return await _dbSet
+            .Include(b => b.Field)
+                .ThenInclude(f => f.Complex)
+            .Include(b => b.TimeSlot)
+            .Where(b => b.CustomerId == userId
+                     && (b.BookingStatus == BookingStatus.Completed || b.BookingStatus == BookingStatus.Confirmed))
+            .OrderByDescending(b => b.BookingDate)
+            .ToListAsync();
+    }
+    
+    // Admin only - Get all bookings with navigation properties
+    public async Task<IEnumerable<BookingEntity>> GetAllWithDetailsAsync()
+    {
+        return await _dbSet
+            .Include(b => b.Field)
+                .ThenInclude(f => f.Complex)
+            .Include(b => b.TimeSlot)
+            .Include(b => b.Customer)
+            .Include(b => b.Owner)
+            .Include(b => b.ApprovedByUser)
+            .Include(b => b.CancelledByUser)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
+    // Admin only - Get queryable with all navigation properties for advanced filtering
+    public IQueryable<BookingEntity> GetQueryableWithDetails()
+    {
+        return _dbSet
+            .Include(b => b.Field)
+                .ThenInclude(f => f.Complex)
+            .Include(b => b.TimeSlot)
+            .Include(b => b.Customer)
+            .Include(b => b.Owner)
+            .Include(b => b.ApprovedByUser)
+            .Include(b => b.CancelledByUser);
+    }
 }

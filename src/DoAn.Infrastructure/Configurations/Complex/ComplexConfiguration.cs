@@ -23,6 +23,7 @@ public class ComplexConfiguration : IEntityTypeConfiguration<DoAn.Core.Domain.En
         entity.Property(e => e.ClosingTime).HasColumnName("closing_time");
         entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(500).IsUnicode(true);
         entity.Property(e => e.Status).HasColumnName("status").IsRequired();
+        entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500).IsUnicode(true);
         entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
         entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
         entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("DATEADD(HOUR, 7, GETUTCDATE())");

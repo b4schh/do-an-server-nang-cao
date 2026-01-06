@@ -5,6 +5,8 @@ using DoAn.Core.Application.Interfaces.Field;
 using DoAn.Core.Application.Interfaces.Booking;
 using DoAn.Core.Application.Interfaces.User;
 using DoAn.Core.Application.Interfaces.SystemConfig;
+using DoAn.Core.Application.Interfaces.Notification;
+using DoAn.Core.Application.Interfaces.Review;
 using DoAn.Core.Application.DTOs.Complex;
 using DoAn.Core.Application.DTOs.Field;
 using Microsoft.Extensions.Logging;
@@ -20,6 +22,9 @@ namespace DoAn.Core.Application.Services.Complex
         private readonly IUserRepository _userRepository;
         private readonly IBookingRepository _bookingRepository;
         private readonly ISystemConfigService _systemConfigService;
+        private readonly INotificationService _notificationService;
+        private readonly IReviewRepository _reviewRepository;
+        private readonly IComplexImageRepository _complexImageRepository;
         private readonly IMapper _mapper;
         private readonly ILogger<ComplexService> _logger;
 
@@ -30,6 +35,9 @@ namespace DoAn.Core.Application.Services.Complex
             IUserRepository userRepository,
             IBookingRepository bookingRepository,
             ISystemConfigService systemConfigService,
+            INotificationService notificationService,
+            IReviewRepository reviewRepository,
+            IComplexImageRepository complexImageRepository,
             IMapper mapper,
             ILogger<ComplexService> logger)
         {
@@ -39,6 +47,9 @@ namespace DoAn.Core.Application.Services.Complex
             _userRepository = userRepository;
             _bookingRepository = bookingRepository;
             _systemConfigService = systemConfigService;
+            _notificationService = notificationService;
+            _reviewRepository = reviewRepository;
+            _complexImageRepository = complexImageRepository;
             _mapper = mapper;
             _logger = logger;
         }
@@ -314,6 +325,32 @@ namespace DoAn.Core.Application.Services.Complex
             _logger.LogInformation("Owner tạo complex mới - Complex ID: {ComplexId}, Name: {Name}, Owner ID: {OwnerId}",
                 created.Id, created.Name, ownerId);
 
+            // Notify all admins about new complex pending approval
+            try
+            {
+                var allUsers = await _userRepository.GetAllUsersWithRolesAsync();
+                var admins = allUsers.Where(u => u.UserRoles.Any(ur => ur.Role.Name == "Admin")).ToList();
+
+                foreach (var admin in admins)
+                {
+                    await _notificationService.CreateAndPushAsync(new NotificationEntity
+                    {
+                        UserId = admin.Id,
+                        SenderId = ownerId,
+                        Title = "Cụm sân mới cần phê duyệt",
+                        Message = $"Cụm sân '{created.Name}' đã được tạo và đang chờ phê duyệt.",
+                        Type = NotificationType.System,
+                        RelatedTable = "COMPLEX",
+                        RelatedId = created.Id,
+                        CreatedAt = DateTime.UtcNow.AddHours(7)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send admin notifications for new complex {ComplexId}", created.Id);
+            }
+
             return _mapper.Map<ComplexDto>(created);
         }
 
@@ -404,9 +441,28 @@ namespace DoAn.Core.Application.Services.Complex
             // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _complexRepository.UpdateAsync(complex);
+
+            // Notify owner about approval
+            try
+            {
+                await _notificationService.CreateAndPushAsync(new NotificationEntity
+                {
+                    UserId = complex.OwnerId,
+                    Title = "Cụm sân đã được phê duyệt",
+                    Message = $"Cụm sân '{complex.Name}' của bạn đã được phê duyệt và có thể hoạt động.",
+                    Type = NotificationType.System,
+                    RelatedTable = "COMPLEX",
+                    RelatedId = complex.Id,
+                    CreatedAt = DateTime.UtcNow.AddHours(7)
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send approval notification for complex {ComplexId}", id);
+            }
         }
 
-        public async Task RejectComplexAsync(int id)
+        public async Task RejectComplexAsync(int id, string? reason = null)
         {
             var complex = await _complexRepository.GetByIdAsync(id);
             if (complex == null)
@@ -416,9 +472,77 @@ namespace DoAn.Core.Application.Services.Complex
                 throw new Exception("Chỉ có thể từ chối sân đang ở trạng thái Pending");
 
             complex.Status = ComplexStatus.Rejected;
+            complex.RejectionReason = reason;
             // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
 
             await _complexRepository.UpdateAsync(complex);
+
+            // Notify owner about rejection with reason
+            try
+            {
+                var message = $"Cụm sân '{complex.Name}' của bạn đã bị từ chối.";
+                if (!string.IsNullOrEmpty(reason))
+                {
+                    message += $" Lý do: {reason}";
+                }
+
+                await _notificationService.CreateAndPushAsync(new NotificationEntity
+                {
+                    UserId = complex.OwnerId,
+                    Title = "Cụm sân đã bị từ chối",
+                    Message = message,
+                    Type = NotificationType.System,
+                    RelatedTable = "COMPLEX",
+                    RelatedId = complex.Id,
+                    CreatedAt = DateTime.UtcNow.AddHours(7)
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send rejection notification for complex {ComplexId}", id);
+            }
+        }
+
+        public async Task ResubmitComplexAsync(int id)
+        {
+            var complex = await _complexRepository.GetByIdAsync(id);
+            if (complex == null)
+                throw new Exception("Không tìm thấy sân");
+
+            if (complex.Status != ComplexStatus.Rejected)
+                throw new Exception("Chỉ có thể gửi lại yêu cầu phê duyệt cho sân đã bị từ chối");
+
+            complex.Status = ComplexStatus.Pending;
+            complex.RejectionReason = null; // Clear rejection reason
+            // UpdatedAt sẽ được set bởi ApplicationDbContext.UpdateTimestamps()
+
+            await _complexRepository.UpdateAsync(complex);
+
+            // Notify all admins about resubmission
+            try
+            {
+                var allUsers = await _userRepository.GetAllUsersWithRolesAsync();
+                var admins = allUsers.Where(u => u.UserRoles.Any(ur => ur.Role.Name == "Admin")).ToList();
+
+                foreach (var admin in admins)
+                {
+                    await _notificationService.CreateAndPushAsync(new NotificationEntity
+                    {
+                        UserId = admin.Id,
+                        SenderId = complex.OwnerId,
+                        Title = "Cụm sân được gửi lại phê duyệt",
+                        Message = $"Cụm sân '{complex.Name}' đã được chỉnh sửa và gửi lại để phê duyệt.",
+                        Type = NotificationType.System,
+                        RelatedTable = "COMPLEX",
+                        RelatedId = complex.Id,
+                        CreatedAt = DateTime.UtcNow.AddHours(7)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send resubmit notifications for complex {ComplexId}", id);
+            }
         }
 
         public async Task<AvailabilityDto?> GetAvailabilityAsync(int complexId, DateOnly startDate, int days)
@@ -611,6 +735,43 @@ namespace DoAn.Core.Application.Services.Complex
             _logger.LogInformation($"[BulkSetup] Completed: Complex ID {complex.Id}, {bulkSetupDto.Fields.Count} fields created");
 
             return _mapper.Map<ComplexDto>(complex);
+        }
+
+        // Admin only - Get all complexes without filters (except IsDeleted)
+        public async Task<(IEnumerable<ComplexDto> complexes, int totalCount)> GetAllComplexesForAdminAsync(int pageIndex, int pageSize)
+        {
+            var (complexes, totalCount) = await _complexRepository.GetAllComplexesForAdminAsync(pageIndex, pageSize);
+            var complexDtos = _mapper.Map<IEnumerable<ComplexDto>>(complexes);
+            return (complexDtos, totalCount);
+        }
+
+        // Admin only - Get complex detail with rating, review count, images, and fields
+        public async Task<AdminComplexDetailDto?> GetComplexDetailForAdminAsync(int id)
+        {
+            // Get complex with fields (admin can view all, no bank info check)
+            var complex = await _complexRepository.GetComplexWithFieldsForAdminAsync(id);
+            if (complex == null) return null;
+
+            // Get owner info
+            var owner = await _userRepository.GetByIdAsync(complex.OwnerId);
+            
+            // Get rating and review count
+            var averageRating = await _reviewRepository.GetAverageRatingByComplexIdAsync(id);
+            var reviews = await _reviewRepository.GetByComplexIdAsync(id);
+            var reviewCount = reviews.Count();
+
+            // Get images
+            var images = await _complexImageRepository.GetByComplexIdAsync(id);
+
+            // Map to DTO
+            var dto = _mapper.Map<AdminComplexDetailDto>(complex);
+            dto.OwnerName = owner != null ? $"{owner.FirstName} {owner.LastName}" : "N/A";
+            dto.OwnerEmail = owner?.Email ?? "N/A";
+            dto.AverageRating = averageRating;
+            dto.ReviewCount = reviewCount;
+            dto.Images = _mapper.Map<IEnumerable<ComplexImageResponseDto>>(images);
+
+            return dto;
         }
     }
 }

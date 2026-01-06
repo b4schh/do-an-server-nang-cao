@@ -21,6 +21,7 @@ public class Complex
     public TimeSpan? ClosingTime { get; set; }
     public string? Description { get; set; }
     public ComplexStatus Status { get; set; } = ComplexStatus.Pending;
+    public string? RejectionReason { get; set; }
     public bool IsActive { get; set; } = true;
     public bool IsDeleted { get; set; } = false;
     public DateTime CreatedAt { get; set; }

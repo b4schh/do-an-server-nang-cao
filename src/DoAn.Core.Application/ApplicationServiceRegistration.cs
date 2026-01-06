@@ -10,6 +10,7 @@ using DoAn.Core.Application.Interfaces.Notification;
 using DoAn.Core.Application.Interfaces.OwnerSetting;
 using DoAn.Core.Application.Interfaces.SystemConfig;
 using DoAn.Core.Application.Interfaces.Location;
+using DoAn.Core.Application.Interfaces.Recommendation;
 using DoAn.Core.Application.Interfaces.Statistics;
 using DoAn.Core.Application.Services.Auth;
 using DoAn.Core.Application.Services.User;
@@ -22,6 +23,7 @@ using DoAn.Core.Application.Services.Notification.Helpers;
 using DoAn.Core.Application.Services.OwnerSetting;
 using DoAn.Core.Application.Services.SystemConfig;
 using DoAn.Core.Application.Services.Location;
+using DoAn.Core.Application.Services.Recommendation;
 using DoAn.Core.Application.Services.Statistics;
 
 namespace DoAn.Core.Application;
@@ -72,7 +74,9 @@ public static class ApplicationServiceRegistration
 
         // ========== STATISTICS SERVICES ==========
         services.AddScoped<IStatisticsService, OwnerStatisticsService>();
-
+        services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
+        
+        services.AddScoped<IRecommendationService, RecommendationService>();
         // Register Helpers
         services.AddScoped<NotificationHelper>();
 

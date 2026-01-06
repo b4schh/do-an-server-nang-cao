@@ -52,12 +52,20 @@ namespace FootballField.API.Modules.AuthManagement.Controllers
                 return Ok(ApiResponse<List<string>>.Fail(string.Join(", ", errors), 400));
             }
 
-            var result = await _authService.LoginAsync(request);
-            
-            if (result == null)
-                return Unauthorized(ApiResponse<string>.Fail("Email hoặc mật khẩu không đúng", 401));
+            try
+            {
+                var result = await _authService.LoginAsync(request);
+                
+                if (result == null)
+                    return Unauthorized(ApiResponse<string>.Fail("Email hoặc mật khẩu không đúng", 401));
 
-            return Ok(ApiResponse<LoginResponse>.Ok(result, "Đăng nhập thành công"));
+                return Ok(ApiResponse<LoginResponse>.Ok(result, "Đăng nhập thành công"));
+            }
+            catch (Exception ex)
+            {
+                // Account bị khóa/inactive/deleted - trả về 403 Forbidden
+                return StatusCode(403, ApiResponse<string>.Fail(ex.Message, 403));
+            }
         }
 
         [HttpGet("profile")]

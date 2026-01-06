@@ -14,4 +14,8 @@ public interface IFieldRepository : IGenericRepository<FieldEntity>
     Task<FieldEntity?> GetFieldWithTimeSlotsAsync(int fieldId);
     Task<FieldEntity?> GetFieldWithComplexAsync(int fieldId);
     Task<IEnumerable<FieldEntity>> GetFieldsByOwnerIdAsync(int ownerId);
+
+    // Recommendation methods
+    Task<FieldEntity?> GetFieldWithDetailsForRecommendationAsync(int fieldId);
+    Task<IEnumerable<FieldEntity>> GetAllActiveFieldsWithDetailsAsync(string? province = null);
 }

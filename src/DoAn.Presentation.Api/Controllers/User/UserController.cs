@@ -69,7 +69,10 @@ namespace FootballField.API.Modules.UserManagement.Controllers
         public async Task<IActionResult> Create([FromBody] CreateUserDto createUserDto)
         {
             if (await _userService.EmailExistsAsync(createUserDto.Email))
-                return Ok(ApiResponse<string>.Fail("Email đã tồn tại", 400));
+                return BadRequest(ApiResponse<string>.Fail("Email đã tồn tại trong hệ thống", 400));
+
+            if (!string.IsNullOrWhiteSpace(createUserDto.Phone) && await _userService.PhoneExistsAsync(createUserDto.Phone))
+                return BadRequest(ApiResponse<string>.Fail("Số điện thoại đã tồn tại trong hệ thống", 400));
 
             var created = await _userService.CreateUserAsync(createUserDto);
             return Ok(ApiResponse<UserDto>.Ok(created, "Tạo người dùng thành công", 201));

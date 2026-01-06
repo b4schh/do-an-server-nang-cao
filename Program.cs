@@ -329,6 +329,9 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Validate user status on each authenticated request (MUST be before MapControllers)
+app.UseMiddleware<UserStatusValidationMiddleware>();
+
 app.MapControllers();
 
 try

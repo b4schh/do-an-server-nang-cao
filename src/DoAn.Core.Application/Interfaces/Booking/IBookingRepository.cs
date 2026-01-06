@@ -17,4 +17,9 @@ public interface IBookingRepository : IGenericRepository<BookingEntity>
     Task<BookingEntity?> GetDetailAsync(int id);
     Task<bool> IsTimeSlotBookedAsync(int fieldId, DateTime bookingDate, int timeSlotId);
     Task<IEnumerable<BookingEntity>> GetExpiredPendingBookingsAsync();
+    Task<IEnumerable<BookingEntity>> GetAllWithDetailsAsync();
+    IQueryable<BookingEntity> GetQueryableWithDetails();
+    
+    // Recommendation methods
+    Task<IEnumerable<BookingEntity>> GetUserBookingHistoryAsync(int userId);
 }

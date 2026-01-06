@@ -28,6 +28,13 @@ public class UserRepository : GenericRepository<UserEntity>, IUserRepository
         return await _dbSet.AnyAsync(u => u.Email == email && !u.IsDeleted);
     }
 
+    public async Task<bool> PhoneExistsAsync(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return false;
+        return await _dbSet.AnyAsync(u => u.Phone == phone && !u.IsDeleted);
+    }
+
     public async Task<UserEntity?> GetUserByIdWithRoleAsync(int userId)
     {
         return await _dbSet
@@ -60,7 +67,22 @@ public class UserRepository : GenericRepository<UserEntity>, IUserRepository
 
     public async Task AddUserRoleAsync(int userId, int roleId)
     {
-        var userRole = new UserRoleEntity { UserId = userId, RoleId = roleId };
+        // Verify user exists
+        var userExists = await _dbSet.AnyAsync(u => u.Id == userId && !u.IsDeleted);
+        if (!userExists)
+            throw new Exception($"User with ID {userId} not found");
+
+        // Verify role exists
+        var roleExists = await _context.Roles.AnyAsync(r => r.Id == roleId && r.IsActive);
+        if (!roleExists)
+            throw new Exception($"Role with ID {roleId} not found");
+
+        var userRole = new UserRoleEntity 
+        { 
+            UserId = userId, 
+            RoleId = roleId,
+            CreatedAt = DateTime.UtcNow
+        };
         await _context.UserRoles.AddAsync(userRole);
         await _context.SaveChangesAsync();
     }

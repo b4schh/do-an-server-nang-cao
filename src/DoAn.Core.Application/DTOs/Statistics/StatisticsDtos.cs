@@ -109,3 +109,84 @@ public class UpcomingBookingDto
     public TimeSpan EndTime { get; set; }
     public decimal TotalAmount { get; set; }
 }
+
+/// <summary>
+/// DTO for Admin Dashboard Statistics
+/// </summary>
+public class AdminDashboardStatsDto
+{
+    // System Overview
+    public int TotalUsers { get; set; }
+    public int TotalCustomers { get; set; }
+    public int TotalOwners { get; set; }
+    public int TotalComplexes { get; set; }
+    public int TotalFields { get; set; }
+    public int ActiveComplexes { get; set; }
+    
+    // Booking Statistics
+    public int TotalBookings { get; set; }
+    public int TodayBookings { get; set; }
+    public int PendingBookings { get; set; }
+    public int ConfirmedBookings { get; set; }
+    public int CompletedBookings { get; set; }
+    public int CancelledBookings { get; set; }
+    public int WaitingForApprovalBookings { get; set; }
+    
+    // Revenue Statistics
+    public decimal TotalRevenue { get; set; }
+    public decimal TodayRevenue { get; set; }
+    public decimal ThisWeekRevenue { get; set; }
+    public decimal ThisMonthRevenue { get; set; }
+    
+    // Review Statistics
+    public int TotalReviews { get; set; }
+    public int PendingReviews { get; set; }
+    public decimal AverageRating { get; set; }
+}
+
+/// <summary>
+/// DTO for System Growth Statistics
+/// </summary>
+public class SystemGrowthDto
+{
+    public DateTime Date { get; set; }
+    public int NewUsers { get; set; }
+    public int NewBookings { get; set; }
+    public decimal Revenue { get; set; }
+}
+
+/// <summary>
+/// DTO for Top Complex by Bookings/Revenue
+/// </summary>
+public class TopComplexDto
+{
+    public int ComplexId { get; set; }
+    public string ComplexName { get; set; } = string.Empty;
+    public string OwnerName { get; set; } = string.Empty;
+    public int BookingCount { get; set; }
+    public decimal Revenue { get; set; }
+    public decimal AverageRating { get; set; }
+    public int ReviewCount { get; set; }
+}
+
+/// <summary>
+/// DTO for Top Customer Statistics
+/// </summary>
+public class TopCustomerDto
+{
+    public int CustomerId { get; set; }
+    public string CustomerName { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public int BookingCount { get; set; }
+    public decimal TotalSpent { get; set; }
+}
+
+/// <summary>
+/// DTO for Booking Status Distribution
+/// </summary>
+public class BookingStatusDistributionDto
+{
+    public string Status { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public decimal Percentage { get; set; }
+}

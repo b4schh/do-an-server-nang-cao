@@ -64,7 +64,7 @@ public class SseRepository : ISseRepository, IDisposable
     {
         if (!_map.TryGetValue(userId, out var list))
         {
-            _logger.LogDebug("No active SSE connections for user {UserId}", userId);
+            _logger.LogWarning("No active SSE connections for user {UserId} - notification will not be delivered in real-time", userId);
             return;
         }
 
@@ -115,12 +115,16 @@ public class SseRepository : ISseRepository, IDisposable
                 }
             }
 
-            _logger.LogWarning("Removed {DeadCount} dead SSE connections for user {UserId}", deadConnections.Count, userId);
+            _logger.LogWarning("Removed {Count} dead SSE connections for user {UserId}", deadConnections.Count, userId);
         }
 
         if (successCount > 0)
         {
-            _logger.LogDebug("Pushed notification to {SuccessCount} SSE connections for user {UserId}", successCount, userId);
+            _logger.LogInformation("✅ Successfully pushed notification to {SuccessCount} SSE connection(s) for user {UserId}", successCount, userId);
+        }
+        else
+        {
+            _logger.LogWarning("❌ Failed to push notification to any SSE connections for user {UserId} (all connections dead or full)", userId);
         }
     }
 

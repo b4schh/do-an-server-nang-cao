@@ -5,6 +5,7 @@ namespace DoAn.Core.Application.Interfaces.Base;
 public interface IGenericRepository<T> where T : class
 {
     // Query methods
+    IQueryable<T> GetQueryable();
     Task<IEnumerable<T>> GetAllAsync();
     Task<IEnumerable<T>> GetAllAsync(Expression<Func<T, bool>> filter);
     Task<(IEnumerable<T> items, int totalCount)> GetPagedAsync(int pageIndex, int pageSize, Expression<Func<T, bool>>? filter = null);

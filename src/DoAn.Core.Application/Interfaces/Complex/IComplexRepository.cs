@@ -10,4 +10,10 @@ public interface IComplexRepository : IGenericRepository<ComplexEntity>
     Task<ComplexEntity?> GetComplexWithFieldsAsync(int complexId);
     Task<ComplexEntity?> GetComplexWithFullDetailsAsync(int complexId);
     Task<IEnumerable<(ComplexEntity Complex, bool HasBankInfo)>> GetComplexesWithDetailsForSearchAsync();
+    
+    // Admin only - Get all complexes without filters (except IsDeleted)
+    Task<(IEnumerable<ComplexEntity> complexes, int totalCount)> GetAllComplexesForAdminAsync(int pageIndex, int pageSize);
+    
+    // Admin only - Get complex with fields without bank info check
+    Task<ComplexEntity?> GetComplexWithFieldsForAdminAsync(int complexId);
 }

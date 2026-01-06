@@ -107,10 +107,29 @@ namespace DoAn.Core.Application.Services.Auth
         {
             // Tìm user theo email với UserRoles
             var user = await _userRepository.GetByEmailAsync(request.Email);
-            if (user == null || user.IsDeleted || user.Status != UserStatus.Active)
+            
+            if (user == null)
             {
-                _logger.LogWarning("Đăng nhập thất bại - Email: {Email}, Lý do: User không tồn tại hoặc bị vô hiệu hóa", request.Email);
+                _logger.LogWarning("Đăng nhập thất bại - Email: {Email}, Lý do: User không tồn tại", request.Email);
                 return null;
+            }
+
+            if (user.IsDeleted)
+            {
+                _logger.LogWarning("Đăng nhập thất bại - Email: {Email}, Lý do: Tài khoản đã bị xóa", request.Email);
+                throw new Exception("Tài khoản của bạn đã bị xóa. Vui lòng liên hệ quản trị viên.");
+            }
+
+            if (user.Status == UserStatus.Banned)
+            {
+                _logger.LogWarning("Đăng nhập thất bại - Email: {Email}, Lý do: Tài khoản bị khóa", request.Email);
+                throw new Exception("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.");
+            }
+
+            if (user.Status == UserStatus.Inactive)
+            {
+                _logger.LogWarning("Đăng nhập thất bại - Email: {Email}, Lý do: Tài khoản chưa kích hoạt", request.Email);
+                throw new Exception("Tài khoản của bạn chưa được kích hoạt. Vui lòng kiểm tra email để kích hoạt tài khoản.");
             }
 
             // Validate password với BCrypt

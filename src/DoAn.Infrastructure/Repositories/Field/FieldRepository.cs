@@ -133,4 +133,35 @@ public class FieldRepository : GenericRepository<FieldEntity>, IFieldRepository
 
         return (fields, totalCount);
     }
+
+    public async Task<FieldEntity?> GetFieldWithDetailsForRecommendationAsync(int fieldId)
+    {
+        return await _dbSet
+            .Include(f => f.Complex)
+                .ThenInclude(c => c.ComplexImages)
+            .Include(f => f.TimeSlots)
+            .Include(f => f.Bookings.Where(b => b.BookingStatus == BookingStatus.Completed))
+            .FirstOrDefaultAsync(f => f.Id == fieldId && f.IsActive && !f.IsDeleted);
+    }
+
+    public async Task<IEnumerable<FieldEntity>> GetAllActiveFieldsWithDetailsAsync(string? province = null)
+    {
+        var query = _dbSet
+            .Include(f => f.Complex)
+                .ThenInclude(c => c.ComplexImages)
+            .Include(f => f.TimeSlots)
+            .Include(f => f.Bookings.Where(b => b.BookingStatus == BookingStatus.Completed))
+            .Where(f => f.IsActive 
+                     && !f.IsDeleted 
+                     && f.Complex.IsActive 
+                     && !f.Complex.IsDeleted
+                     && f.Complex.Status == ComplexStatus.Approved);
+
+        if (!string.IsNullOrEmpty(province))
+        {
+            query = query.Where(f => f.Complex.Province == province);
+        }
+
+        return await query.ToListAsync();
+    }
 }

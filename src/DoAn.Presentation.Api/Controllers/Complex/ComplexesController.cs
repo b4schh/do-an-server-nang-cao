@@ -19,11 +19,32 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
             _complexService = complexService;
         }
 
-        // Lấy tất cả Complexes phân trang
+        // Lấy tất cả Complexes phân trang (chỉ trả về approved complexes cho public)
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
             var (complexes, totalCount) = await _complexService.GetPagedComplexesAsync(pageIndex, pageSize);
+            var response = new ApiPagedResponse<ComplexDto>(complexes, pageIndex, pageSize, totalCount, "Lấy danh sách sân thành công");
+            return Ok(response);
+        }
+
+        // Lấy tất cả Complexes cho Admin (bao gồm cả pending, rejected) - Admin only
+        [HttpGet("admin/all")]
+        [HasPermission("complex.view_all")]
+        public async Task<IActionResult> GetAllForAdmin(
+            [FromQuery] int pageIndex = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] int? status = null)
+        {
+            var (complexes, totalCount) = await _complexService.GetAllComplexesForAdminAsync(pageIndex, pageSize);
+            
+            // Filter by status if provided (0=Pending, 1=Approved, 2=Rejected)
+            if (status.HasValue)
+            {
+                complexes = complexes.Where(c => (int)c.Status == status.Value);
+                totalCount = complexes.Count();
+            }
+            
             var response = new ApiPagedResponse<ComplexDto>(complexes, pageIndex, pageSize, totalCount, "Lấy danh sách sân thành công");
             return Ok(response);
         }
@@ -37,6 +58,18 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
                 return NotFound(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
 
             return Ok(ApiResponse<ComplexDto>.Ok(complex, "Lấy thông tin sân thành công"));
+        }
+
+        // Admin only - Lấy Complex detail với rating, review count, images
+        [HttpGet("{id}/admin-details")]
+        [HasPermission("complex.view_all")]
+        public async Task<IActionResult> GetAdminDetails(int id)
+        {
+            var complex = await _complexService.GetComplexDetailForAdminAsync(id);
+            if (complex == null)
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy sân", 404));
+
+            return Ok(ApiResponse<AdminComplexDetailDto>.Ok(complex, "Lấy thông tin sân thành công"));
         }
 
         // Lấy Complex kèm Fields
@@ -258,10 +291,27 @@ namespace FootballField.API.Modules.ComplexManagement.Controllers
         // Từ chối Complex
         [HttpPatch("{id}/reject")]
         [HasPermission("complex.approve")]
-        public async Task<IActionResult> Reject(int id)
+        public async Task<IActionResult> Reject(int id, [FromBody] RejectComplexDto dto)
         {
-            await _complexService.RejectComplexAsync(id);
+            await _complexService.RejectComplexAsync(id, dto.Reason);
             return Ok(ApiResponse<string>.Ok("", "Từ chối sân thành công"));
+        }
+
+        [HttpPatch("{id}/resubmit")]
+        [HasPermission("complex.edit_own")]
+        public async Task<IActionResult> Resubmit(int id)
+        {
+            var ownerId = GetUserId();
+            var complex = await _complexService.GetComplexByIdAsync(id);
+            
+            if (complex == null)
+                throw new KeyNotFoundException("Không tìm thấy cụm sân");
+            
+            if (complex.OwnerId != ownerId)
+                throw new UnauthorizedAccessException("Bạn không có quyền gửi lại yêu cầu phê duyệt cho cụm sân này");
+
+            await _complexService.ResubmitComplexAsync(id);
+            return Ok(ApiResponse<string>.Ok("", "Đã gửi lại yêu cầu phê duyệt thành công"));
         }
 
         // Bulk Setup: Create complex with fields and timeslots

@@ -19,6 +19,19 @@ public class ComplexMappingProfile : Profile
         
         CreateMap<Complex, ComplexWeeklyDetailsDto>()
             .ForMember(dest => dest.Fields, opt => opt.Ignore()); // Ignore vì map thủ công trong Service
+
+        // Admin detail mapping - includes owner info, rating, reviews, images
+        CreateMap<Complex, AdminComplexDetailDto>()
+            .ForMember(dest => dest.OwnerName, opt => opt.Ignore())  // Set in service
+            .ForMember(dest => dest.OwnerEmail, opt => opt.Ignore()) // Set in service
+            .ForMember(dest => dest.AverageRating, opt => opt.Ignore()) // Set in service
+            .ForMember(dest => dest.ReviewCount, opt => opt.Ignore())   // Set in service
+            .ForMember(dest => dest.Images, opt => opt.Ignore())        // Set in service
+            .ForMember(dest => dest.FieldCount, opt => opt.MapFrom(src => src.Fields.Count(f => !f.IsDeleted)));
+        
+        // ComplexImage mappings
+        CreateMap<ComplexImage, ComplexImageResponseDto>();
+        CreateMap<ComplexImageCreateDto, ComplexImage>();
         
         CreateMap<CreateComplexDto, Complex>();
         

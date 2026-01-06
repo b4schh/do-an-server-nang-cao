@@ -628,5 +628,67 @@ namespace DoAn.Core.Application.Services.Booking
 
             await _bookingRepository.UpdateAsync(booking);
         }
+
+        // Admin only - Get all bookings with filters and pagination
+        public async Task<(IEnumerable<BookingDto> bookings, int totalRecords)> GetAllBookingsForAdminAsync(
+            int pageIndex,
+            int pageSize,
+            BookingStatus? status = null,
+            int? complexId = null,
+            int? ownerId = null,
+            int? customerId = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? searchTerm = null)
+        {
+            // Start with IQueryable from repository (already includes all navigation properties)
+            var query = _bookingRepository.GetQueryableWithDetails();
+
+            // Apply filters on database side
+            if (status.HasValue)
+                query = query.Where(b => b.BookingStatus == status.Value);
+
+            if (complexId.HasValue)
+            {
+                query = query.Where(b => b.Field.ComplexId == complexId.Value);
+            }
+
+            if (ownerId.HasValue)
+                query = query.Where(b => b.OwnerId == ownerId.Value);
+
+            if (customerId.HasValue)
+                query = query.Where(b => b.CustomerId == customerId.Value);
+
+            if (fromDate.HasValue)
+                query = query.Where(b => b.BookingDate >= fromDate.Value.Date);
+
+            if (toDate.HasValue)
+                query = query.Where(b => b.BookingDate <= toDate.Value.Date);
+
+            // Search by customer name, complex name, or field name
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                searchTerm = searchTerm.ToLower();
+                query = query.Where(b =>
+                    (b.Customer.FirstName + " " + b.Customer.LastName).ToLower().Contains(searchTerm) ||
+                    b.Field.Name.ToLower().Contains(searchTerm) ||
+                    b.Field.Complex.Name.ToLower().Contains(searchTerm));
+            }
+
+            // Count total records (executes on database)
+            var totalRecords = query.Count();
+
+            // Order and paginate on database side
+            var pagedBookings = query
+                .OrderByDescending(b => b.BookingDate)
+                .ThenByDescending(b => b.CreatedAt)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var bookingDtos = _mapper.Map<IEnumerable<BookingDto>>(pagedBookings);
+
+            return (bookingDtos, totalRecords);
+        }
     }
 }
