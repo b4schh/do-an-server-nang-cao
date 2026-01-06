@@ -87,5 +87,34 @@ namespace FootballField.API.Modules.OwnerSettingsManagement.Controllers
                 isValid ? "Thông tin ngân hàng đầy đủ" : "Thông tin ngân hàng chưa đầy đủ"
             ));
         }
+
+        /// <summary>
+        /// Get owner bank info by ownerId (Public endpoint for customers to view payment info)
+        /// </summary>
+        [HttpGet("by-owner/{ownerId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetOwnerBankInfo(int ownerId)
+        {
+            var ownerSetting = await _service.GetByOwnerIdAsync(ownerId);
+            
+            if (ownerSetting == null)
+            {
+                return NotFound(ApiResponse<object>.Fail("Không tìm thấy thông tin ngân hàng của chủ sân", 404));
+            }
+
+            // Chỉ trả về thông tin ngân hàng cần thiết cho thanh toán
+            var bankInfo = new
+            {
+                bankName = ownerSetting.BankName,
+                bankAccountNumber = ownerSetting.BankAccountNumber,
+                bankAccountName = ownerSetting.BankAccountName,
+                bankQrCodeUrl = ownerSetting.BankQrCodeUrl
+            };
+
+            return Ok(ApiResponse<object>.Ok(
+                bankInfo,
+                "Lấy thông tin ngân hàng thành công"
+            ));
+        }
     }
 }

@@ -1,86 +1,81 @@
 using DoAn.Core.Application.Interfaces.Recommendation;
 using DoAn.Core.Application.DTOs.Recommendation;
 using DoAn.Core.Domain.Entities;
-using DoAn.Core.Application.Interfaces.Field;
+using DoAn.Core.Application.Interfaces.Complex;
 using DoAn.Core.Application.Interfaces.Booking;
 using DoAn.Core.Application.Interfaces.Review;
-using DoAn.Core.Application.Interfaces.Complex;
 
 namespace DoAn.Core.Application.Services.Recommendation;
 
 public class RecommendationService : IRecommendationService
 {
-    private readonly IFieldRepository _fieldRepository;
+    private readonly IComplexRepository _complexRepository;
     private readonly IBookingRepository _bookingRepository;
     private readonly IReviewRepository _reviewRepository;
-    private readonly IComplexRepository _complexRepository;
 
     public RecommendationService(
-        IFieldRepository fieldRepository,
+        IComplexRepository complexRepository,
         IBookingRepository bookingRepository,
-        IReviewRepository reviewRepository,
-        IComplexRepository complexRepository)
+        IReviewRepository reviewRepository)
     {
-        _fieldRepository = fieldRepository;
+        _complexRepository = complexRepository;
         _bookingRepository = bookingRepository;
         _reviewRepository = reviewRepository;
-        _complexRepository = complexRepository;
     }
 
-    #region Item-to-Item Recommendation (Sân tương tự)
+    #region Item-to-Item Recommendation (Complex tương tự)
 
     /// <summary>
-    /// STRATEGY 1: Item-to-Item Similarity
-    /// Gợi ý sân tương tự dựa trên vector đặc trưng của sân
+    /// STRATEGY 1: Item-to-Item Similarity at Complex level
+    /// Gợi ý Complex tương tự dựa trên vector đặc trưng
     /// </summary>
-    public async Task<RecommendationResponse> GetSimilarFieldsAsync(int fieldId, int topK = 10)
+    public async Task<RecommendationResponse> GetSimilarComplexesAsync(int complexId, int topK = 10)
     {
-        // Lấy sân hiện tại với đầy đủ thông tin
-        var currentField = await _fieldRepository.GetFieldWithDetailsForRecommendationAsync(fieldId);
+        // Lấy Complex hiện tại với đầy đủ thông tin
+        var currentComplex = await _complexRepository.GetComplexWithDetailsForRecommendationAsync(complexId);
 
-        if (currentField == null)
+        if (currentComplex == null)
         {
             return new RecommendationResponse
             {
-                RecommendationType = "item-to-item",
-                Fields = new List<FieldRecommendationDto>(),
-                Message = "Không tìm thấy sân"
+                RecommendationType = "complex-similarity",
+                Complexes = new List<ComplexRecommendationDto>(),
+                Message = "Không tìm thấy cụm sân"
             };
         }
 
-        // Vector hóa sân hiện tại
-        var currentVector = VectorizeField(currentField);
+        // Vector hóa Complex hiện tại
+        var currentVector = VectorizeComplex(currentComplex);
 
-        // Lấy tất cả sân khác (cùng tỉnh để tăng độ chính xác)
-        var otherFields = (await _fieldRepository.GetAllActiveFieldsWithDetailsAsync(currentField.Complex.Province))
-            .Where(f => f.Id != fieldId)
+        // Lấy tất cả Complex khác (cùng tỉnh để tăng độ chính xác)
+        var otherComplexes = (await _complexRepository.GetAllActiveComplexesWithDetailsAsync(currentComplex.Province))
+            .Where(c => c.Id != complexId)
             .ToList();
 
-        // Tính similarity cho từng sân
-        var similarities = new List<(FieldEntity field, double score, int randomOrder)>();
+        // Tính similarity cho từng Complex
+        var similarities = new List<(ComplexEntity complex, double score, int randomOrder)>();
         var random = new Random();
         
-        foreach (var field in otherFields)
+        foreach (var complex in otherComplexes)
         {
-            var fieldVector = VectorizeField(field);
-            var similarity = CosineSimilarity(currentVector, fieldVector);
-            similarities.Add((field, similarity, random.Next()));
+            var complexVector = VectorizeComplex(complex);
+            var similarity = CosineSimilarity(currentVector, complexVector);
+            similarities.Add((complex, similarity, random.Next()));
         }
 
-        // Lấy Top-K sân có similarity cao nhất
-        // Nếu similarity bằng nhau, shuffle ngẫu nhiên thay vì theo ID
-        var topFields = similarities
+        // Lấy Top-K Complex có similarity cao nhất
+        var topComplexes = similarities
             .OrderByDescending(x => x.score)
-            .ThenBy(x => x.randomOrder) // Thêm random tiebreaker
+            .ThenBy(x => x.randomOrder)
             .Take(topK)
-            .Select(x => MapToRecommendationDto(x.field, x.score))
+            .Select(x => MapToRecommendationDto(x.complex, x.score))
             .ToList();
 
         return new RecommendationResponse
         {
-            RecommendationType = "item-to-item",
-            Fields = topFields,
-            Message = $"Tìm thấy {topFields.Count} sân tương tự"
+            RecommendationType = "complex-similarity",
+            Complexes = topComplexes,
+            Message = $"Tìm thấy {topComplexes.Count} cụm sân tương tự"
         };
     }
 
@@ -90,59 +85,62 @@ public class RecommendationService : IRecommendationService
 
     /// <summary>
     /// STRATEGY 2: Location-based + Popularity
-    /// Gợi ý sân cho user mới dựa trên vị trí và độ phổ biến
+    /// Gợi ý Complex cho user mới dựa trên vị trí và độ phổ biến
     /// </summary>
     public async Task<RecommendationResponse> GetRecommendationsForNewUserAsync(
         string? province, 
         string? ward, 
         int topK = 10)
     {
-        // Lấy tất cả sân active
-        var fields = (await _fieldRepository.GetAllActiveFieldsWithDetailsAsync(province)).ToList();
+        // Lấy tất cả Complex active
+        var complexes = (await _complexRepository.GetAllActiveComplexesWithDetailsAsync(province)).ToList();
 
         // Lọc theo ward nếu có
         if (!string.IsNullOrEmpty(ward))
         {
-            fields = fields.Where(f => f.Complex.Ward == ward).ToList();
+            complexes = complexes.Where(c => c.Ward == ward).ToList();
         }
 
-        if (!fields.Any())
+        if (!complexes.Any())
         {
             return new RecommendationResponse
             {
                 RecommendationType = "location-popularity",
-                Fields = new List<FieldRecommendationDto>(),
-                Message = "Không tìm thấy sân phù hợp"
+                Complexes = new List<ComplexRecommendationDto>(),
+                Message = "Không tìm thấy cụm sân phù hợp"
             };
         }
 
-        // Tính popularity score cho mỗi sân
+        // Tính popularity score cho mỗi Complex
         var random = new Random();
-        var scoredFields = fields.Select(field => 
+        var scoredComplexes = complexes.Select(complex => 
         {
-            var bookingCount = field.Bookings.Count;
-            var avgRating = GetAverageRating(field.ComplexId);
+            var totalBookings = complex.Fields
+                .SelectMany(f => f.Bookings)
+                .Count(b => b.BookingStatus == BookingStatus.Completed);
+            
+            var avgRating = GetAverageRating(complex.Id);
             
             // Công thức popularity: 0.6 * normalized_booking + 0.4 * normalized_rating
-            var maxBooking = fields.Max(f => f.Bookings.Count);
-            var normalizedBooking = maxBooking > 0 ? (double)bookingCount / maxBooking : 0;
+            var maxBooking = complexes.Max(c => c.Fields.SelectMany(f => f.Bookings).Count(b => b.BookingStatus == BookingStatus.Completed));
+            var normalizedBooking = maxBooking > 0 ? (double)totalBookings / maxBooking : 0;
             var normalizedRating = avgRating / 5.0;
             
             var popularityScore = 0.6 * normalizedBooking + 0.4 * normalizedRating;
             
-            return (field, popularityScore, randomOrder: random.Next());
+            return (complex, popularityScore, randomOrder: random.Next());
         })
         .OrderByDescending(x => x.popularityScore)
-        .ThenByDescending(x => x.randomOrder) // Thêm randomness khi score bằng nhau
+        .ThenByDescending(x => x.randomOrder)
         .Take(topK)
-        .Select(x => MapToRecommendationDto(x.field, x.popularityScore))
+        .Select(x => MapToRecommendationDto(x.complex, x.popularityScore))
         .ToList();
 
         return new RecommendationResponse
         {
             RecommendationType = "location-popularity",
-            Fields = scoredFields,
-            Message = $"Gợi ý {scoredFields.Count} sân phổ biến"
+            Complexes = scoredComplexes,
+            Message = $"Gợi ý {scoredComplexes.Count} cụm sân phổ biến"
         };
     }
 
@@ -168,47 +166,81 @@ public class RecommendationService : IRecommendationService
             return await GetRecommendationsForNewUserAsync(province, null, topK);
         }
 
-        // Tạo user vector từ trung bình các sân đã đặt
-        var userVector = CreateUserVector(userBookings.Select(b => b.Field).ToList());
-
-        // Lấy tất cả sân chưa từng đặt
-        var bookedFieldIds = userBookings.Select(b => b.FieldId).ToHashSet();
+        // Tạo user vector từ các Complex đã đặt
+        var bookedComplexes = userBookings
+            .Select(b => b.Field.Complex)
+            .DistinctBy(c => c.Id)
+            .ToList();
         
-        var candidateFields = (await _fieldRepository.GetAllActiveFieldsWithDetailsAsync(province))
-            .Where(f => !bookedFieldIds.Contains(f.Id))
+        var userVector = CreateUserVector(bookedComplexes);
+
+        // Lấy tất cả Complex chưa từng đặt
+        var bookedComplexIds = bookedComplexes.Select(c => c.Id).ToHashSet();
+        
+        var candidateComplexes = (await _complexRepository.GetAllActiveComplexesWithDetailsAsync(province))
+            .Where(c => !bookedComplexIds.Contains(c.Id))
             .ToList();
 
-        if (!candidateFields.Any())
+        if (!candidateComplexes.Any())
         {
             return new RecommendationResponse
             {
                 RecommendationType = "content-based-user",
-                Fields = new List<FieldRecommendationDto>(),
-                Message = "Không có sân mới để gợi ý"
+                Complexes = new List<ComplexRecommendationDto>(),
+                Message = "Không có cụm sân mới để gợi ý"
             };
         }
 
-        // Tính similarity giữa user vector và từng sân
+        // Tính similarity giữa user vector và từng Complex
         var random = new Random();
-        var recommendations = candidateFields
-            .Select(field => 
+        var recommendations = candidateComplexes
+            .Select(complex => 
             {
-                var fieldVector = VectorizeField(field);
-                var similarity = CosineSimilarity(userVector, fieldVector);
-                return (field, similarity, randomOrder: random.Next());
+                var complexVector = VectorizeComplex(complex);
+                var similarity = CosineSimilarity(userVector, complexVector);
+                return (complex, similarity, randomOrder: random.Next());
             })
             .OrderByDescending(x => x.similarity)
-            .ThenBy(x => x.randomOrder) // Random tiebreaker
+            .ThenBy(x => x.randomOrder)
             .Take(topK)
-            .Select(x => MapToRecommendationDto(x.field, x.similarity))
+            .Select(x => MapToRecommendationDto(x.complex, x.similarity))
             .ToList();
 
         return new RecommendationResponse
         {
             RecommendationType = "content-based-user",
-            Fields = recommendations,
-            Message = $"Gợi ý {recommendations.Count} sân phù hợp với bạn"
+            Complexes = recommendations,
+            Message = $"Gợi ý {recommendations.Count} cụm sân phù hợp với bạn"
         };
+    }
+
+    #endregion
+
+    #region Smart Recommendation
+
+    /// <summary>
+    /// STRATEGY 4: Smart Recommendation
+    /// Tự động chọn strategy tốt nhất dựa trên context
+    /// </summary>
+    public async Task<RecommendationResponse> GetSmartRecommendationsAsync(
+        int? userId, 
+        string? province, 
+        string? ward, 
+        int topK = 10)
+    {
+        // Nếu có userId → thử personalized
+        if (userId.HasValue)
+        {
+            var personalizedResult = await GetPersonalizedRecommendationsAsync(userId.Value, topK, province);
+            
+            if (personalizedResult.Complexes.Any())
+            {
+                return personalizedResult;
+            }
+        }
+
+        // Fallback: location-based
+        return await GetRecommendationsForNewUserAsync(province, ward, topK);
     }
 
     #endregion
@@ -216,66 +248,71 @@ public class RecommendationService : IRecommendationService
     #region Helper Methods - Vector Operations
 
     /// <summary>
-    /// Vector hóa sân bóng thành feature vector
-    /// Vector = [field_size, avg_price, surface_natural, surface_artificial, has_bookings, popularity_score]
+    /// Vector hóa Complex thành feature vector
+    /// Vector = [has_field_5, has_field_7, has_field_11, has_natural, has_artificial, 
+    ///          avg_min_price, avg_max_price, total_bookings, avg_rating, province_code]
     /// </summary>
-    private double[] VectorizeField(FieldEntity field)
+    private double[] VectorizeComplex(ComplexEntity complex)
     {
-        // Feature 1: Field Size (chuẩn hóa: 5 -> 0.5, 7 -> 0.7, 11 -> 1.0)
-        var fieldSizeValue = field.FieldSize?.ToLower() switch
-        {
-            "5" => 0.5,
-            "7" => 0.7,
-            "11" => 1.0,
-            _ => 0.5
-        };
+        var activeFields = complex.Fields.Where(f => f.IsActive && !f.IsDeleted).ToList();
 
-        // Feature 2: Average Price (chuẩn hóa 0-1)
-        var avgPrice = field.TimeSlots.Any() 
-            ? (double)field.TimeSlots.Average(ts => ts.Price) 
-            : 0;
-        var normalizedPrice = Math.Min(avgPrice / 1000000, 1.0); // Max 1 triệu
+        // Feature 1-3: Field types available (one-hot)
+        var hasField5 = activeFields.Any(f => f.FieldSize == "5") ? 1.0 : 0.0;
+        var hasField7 = activeFields.Any(f => f.FieldSize == "7") ? 1.0 : 0.0;
+        var hasField11 = activeFields.Any(f => f.FieldSize == "11") ? 1.0 : 0.0;
 
-        // Feature 3: Surface Type (one-hot encoding)
-        var surfaceNatural = field.SurfaceType?.ToLower().Contains("tự nhiên") == true ? 1.0 : 0.0;
-        var surfaceArtificial = field.SurfaceType?.ToLower().Contains("nhân tạo") == true ? 1.0 : 0.0;
+        // Feature 4-5: Surface types (one-hot)
+        var hasNatural = activeFields.Any(f => f.SurfaceType?.ToLower().Contains("tự nhiên") == true) ? 1.0 : 0.0;
+        var hasArtificial = activeFields.Any(f => f.SurfaceType?.ToLower().Contains("nhân tạo") == true) ? 1.0 : 0.0;
 
-        // Feature 4: Has bookings (indicator)
-        var hasBookings = field.Bookings.Any() ? 1.0 : 0.0;
+        // Feature 6-7: Price range
+        var allPrices = activeFields
+            .SelectMany(f => f.TimeSlots.Select(ts => ts.Price))
+            .Where(p => p > 0)
+            .ToList();
 
-        // Feature 5: Popularity score (more nuanced)
-        var completedBookings = field.Bookings.Count(b => b.BookingStatus == BookingStatus.Completed);
-        var normalizedBooking = Math.Min(completedBookings / 50.0, 1.0); // Scale to 50 bookings
+        var avgMinPrice = allPrices.Any() ? (double)allPrices.Min() : 0;
+        var avgMaxPrice = allPrices.Any() ? (double)allPrices.Max() : 0;
+        var normalizedMinPrice = Math.Min(avgMinPrice / 1000000, 1.0); // Max 1M
+        var normalizedMaxPrice = Math.Min(avgMaxPrice / 1000000, 1.0);
 
-        // Feature 6: Price tier (thêm diversity)
-        var priceTier = avgPrice switch
-        {
-            < 200000 => 0.33,  // Giá rẻ
-            < 400000 => 0.67,  // Giá trung
-            _ => 1.0           // Giá cao
-        };
+        // Feature 8: Total bookings (popularity)
+        var totalBookings = activeFields
+            .SelectMany(f => f.Bookings)
+            .Count(b => b.BookingStatus == BookingStatus.Completed);
+        var normalizedBookings = Math.Min(totalBookings / 100.0, 1.0); // Scale to 100
+
+        // Feature 9: Average rating
+        var avgRating = GetAverageRating(complex.Id);
+        var normalizedRating = avgRating / 5.0;
+
+        // Feature 10: Province (for location similarity)
+        var provinceCode = HashProvince(complex.Province);
 
         return new double[] 
         { 
-            fieldSizeValue, 
-            normalizedPrice, 
-            surfaceNatural, 
-            surfaceArtificial, 
-            hasBookings,
-            normalizedBooking,
-            priceTier
+            hasField5,
+            hasField7,
+            hasField11,
+            hasNatural,
+            hasArtificial,
+            normalizedMinPrice,
+            normalizedMaxPrice,
+            normalizedBookings,
+            normalizedRating,
+            provinceCode
         };
     }
 
     /// <summary>
-    /// Tạo user vector từ trung bình các sân đã đặt
+    /// Tạo user vector từ trung bình các Complex đã đặt
     /// </summary>
-    private double[] CreateUserVector(List<FieldEntity> bookedFields)
+    private double[] CreateUserVector(List<ComplexEntity> bookedComplexes)
     {
-        if (!bookedFields.Any())
-            return new double[7]; // Thay đổi từ 6 thành 7
+        if (!bookedComplexes.Any())
+            return new double[10]; // Match vector dimension
 
-        var vectors = bookedFields.Select(VectorizeField).ToList();
+        var vectors = bookedComplexes.Select(VectorizeComplex).ToList();
         var dimension = vectors[0].Length;
         var userVector = new double[dimension];
 
@@ -312,49 +349,96 @@ public class RecommendationService : IRecommendationService
         return dotProduct / (Math.Sqrt(magnitudeA) * Math.Sqrt(magnitudeB));
     }
 
+    /// <summary>
+    /// Hash province name to [0, 1]
+    /// </summary>
+    private double HashProvince(string? province)
+    {
+        if (string.IsNullOrEmpty(province))
+            return 0.0;
+
+        return (province.GetHashCode() % 100) / 100.0;
+    }
+
     #endregion
 
     #region Helper Methods - Data Mapping
 
-    private FieldRecommendationDto MapToRecommendationDto(FieldEntity field, double score)
+    private ComplexRecommendationDto MapToRecommendationDto(ComplexEntity complex, double score)
     {
-        var avgPrice = field.TimeSlots.Any() 
-            ? field.TimeSlots.Average(ts => ts.Price) 
-            : 0;
-
-        var avgRating = GetAverageRating(field.ComplexId);
-        var bookingCount = field.Bookings.Count(b => b.BookingStatus == BookingStatus.Completed);
+        var activeFields = complex.Fields.Where(f => f.IsActive && !f.IsDeleted).ToList();
         
-        var imageUrl = field.Complex.ComplexImages?.FirstOrDefault()?.ImageUrl;
+        // Price range
+        var allPrices = activeFields
+            .SelectMany(f => f.TimeSlots.Select(ts => ts.Price))
+            .Where(p => p > 0)
+            .ToList();
+        
+        var priceRange = allPrices.Any() 
+            ? $"{FormatPrice(allPrices.Min())} - {FormatPrice(allPrices.Max())}"
+            : "Chưa cập nhật";
 
-        return new FieldRecommendationDto
+        // Field types
+        var fieldTypes = activeFields
+            .Select(f => $"Sân {f.FieldSize}")
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
+
+        // Surface types
+        var surfaceTypes = activeFields
+            .Select(f => f.SurfaceType)
+            .Where(s => !string.IsNullOrEmpty(s))
+            .Distinct()
+            .ToList();
+
+        // Total bookings
+        var totalBookings = activeFields
+            .SelectMany(f => f.Bookings)
+            .Count(b => b.BookingStatus == BookingStatus.Completed);
+
+        var avgRating = GetAverageRating(complex.Id);
+        var imageUrl = complex.ComplexImages?.FirstOrDefault()?.ImageUrl;
+
+        return new ComplexRecommendationDto
         {
-            Id = field.Id,
-            Name = field.Name,
-            ComplexId = field.ComplexId,
-            ComplexName = field.Complex.Name,
-            Province = field.Complex.Province,
-            Ward = field.Complex.Ward,
-            Price = avgPrice,
-            FieldSize = int.TryParse(field.FieldSize, out var size) ? size : 0,
-            SurfaceType = field.SurfaceType,
+            Id = complex.Id,
+            Name = complex.Name,
+            Province = complex.Province,
+            Ward = complex.Ward,
+            Street = complex.Street,
+            Phone = complex.Phone,
+            PriceRange = priceRange,
+            FieldTypes = fieldTypes,
+            SurfaceTypes = surfaceTypes!,
+            TotalFields = activeFields.Count,
             AverageRating = avgRating,
-            BookingCount = bookingCount,
+            TotalBookings = totalBookings,
             SimilarityScore = Math.Round(score, 3),
             ImageUrl = imageUrl,
-            IsActive = field.IsActive
+            IsActive = complex.IsActive,
+            OpeningTime = complex.OpeningTime?.ToString(@"hh\:mm"),
+            ClosingTime = complex.ClosingTime?.ToString(@"hh\:mm")
         };
     }
 
     private double GetAverageRating(int complexId)
     {
-        // Get all bookings for this complex, then get reviews
         var reviews = _reviewRepository.GetAllAsync(r => 
             !r.IsDeleted && 
             r.Booking.Field.ComplexId == complexId
         ).Result;
         
         return reviews.Any() ? reviews.Average(r => r.Rating) : 0;
+    }
+
+    private string FormatPrice(decimal price)
+    {
+        if (price >= 1000000)
+            return $"{price / 1000000:0.#}tr";
+        if (price >= 1000)
+            return $"{price / 1000:0}k";
+        return $"{price:0}đ";
     }
 
     #endregion

@@ -16,4 +16,16 @@ public interface IComplexRepository : IGenericRepository<ComplexEntity>
     
     // Admin only - Get complex with fields without bank info check
     Task<ComplexEntity?> GetComplexWithFieldsForAdminAsync(int complexId);
+    
+    // Recommendation methods
+    /// <summary>
+    /// Lấy Complex với đầy đủ thông tin cho recommendation
+    /// Include: Fields, TimeSlots, Bookings, ComplexImages
+    /// </summary>
+    Task<ComplexEntity?> GetComplexWithDetailsForRecommendationAsync(int complexId);
+    
+    /// <summary>
+    /// Lấy tất cả Complex active với đầy đủ thông tin
+    /// </summary>
+    Task<IEnumerable<ComplexEntity>> GetAllActiveComplexesWithDetailsAsync(string? province = null);
 }

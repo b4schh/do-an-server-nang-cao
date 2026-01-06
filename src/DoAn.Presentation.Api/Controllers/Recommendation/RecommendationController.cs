@@ -19,27 +19,27 @@ public class RecommendationController : ControllerBase
     }
 
     /// <summary>
-    /// Gợi ý sân tương tự (Item-to-Item)
-    /// Dùng khi user xem chi tiết 1 sân
+    /// Gợi ý cụm sân tương tự (Complex-to-Complex Similarity)
+    /// Dùng khi user xem chi tiết 1 cụm sân
     /// </summary>
-    /// <param name="fieldId">ID của sân hiện tại</param>
-    /// <param name="topK">Số lượng sân tương tự (mặc định 10)</param>
+    /// <param name="complexId">ID của cụm sân hiện tại</param>
+    /// <param name="topK">Số lượng cụm sân tương tự (mặc định 10)</param>
     /// <remarks>
-    /// Tự động lọc sân cùng tỉnh với sân hiện tại
-    /// Ví dụ: GET /api/recommendations/similar/5?topK=5
+    /// Tự động lọc cụm sân cùng tỉnh
+    /// Ví dụ: GET /api/recommendations/similar-complex/5?topK=5
     /// </remarks>
-    [HttpGet("similar/{fieldId}")]
-    public async Task<IActionResult> GetSimilarFields(
-        [FromRoute] int fieldId,
+    [HttpGet("similar-complex/{complexId}")]
+    public async Task<IActionResult> GetSimilarComplexes(
+        [FromRoute] int complexId,
         [FromQuery] int topK = 10)
     {
         try
         {
-            var result = await _recommendationService.GetSimilarFieldsAsync(fieldId, topK);
+            var result = await _recommendationService.GetSimilarComplexesAsync(complexId, topK);
             
-            if (!result.Fields.Any())
+            if (!result.Complexes.Any())
             {
-                return Ok(ApiResponse<RecommendationResponse>.Fail("Không tìm thấy sân tương tự", 404));
+                return Ok(ApiResponse<RecommendationResponse>.Fail("Không tìm thấy cụm sân tương tự", 404));
             }
 
             return Ok(ApiResponse<RecommendationResponse>.Ok(result, "Lấy gợi ý thành công"));
@@ -51,17 +51,17 @@ public class RecommendationController : ControllerBase
     }
 
     /// <summary>
-    /// Gợi ý sân cho user mới (Location-based + Popularity)
+    /// Gợi ý cụm sân cho user mới (Location-based + Popularity)
     /// Dùng khi user chưa có lịch sử booking
     /// </summary>
-    /// <param name="province">Tỉnh/Thành phố (optional). Nếu không truyền, sẽ lấy tất cả sân</param>
-    /// <param name="ward">Phường/Xã (optional). Chỉ áp dụng khi có province</param>
-    /// <param name="topK">Số lượng sân gợi ý (mặc định 10)</param>
+    /// <param name="province">Tỉnh/Thành phố (optional)</param>
+    /// <param name="ward">Phường/Xã (optional)</param>
+    /// <param name="topK">Số lượng cụm sân gợi ý (mặc định 10)</param>
     /// <remarks>
     /// Ví dụ:
-    /// - Tất cả sân: GET /api/recommendations/new-user
+    /// - Tất cả: GET /api/recommendations/new-user
     /// - Theo tỉnh: GET /api/recommendations/new-user?province=Hồ Chí Minh
-    /// - Theo tỉnh và phường: GET /api/recommendations/new-user?province=Hồ Chí Minh&amp;ward=Phường 1
+    /// - Chi tiết: GET /api/recommendations/new-user?province=Hồ Chí Minh&amp;ward=Phường 1
     /// </remarks>
     [HttpGet("new-user")]
     public async Task<IActionResult> GetRecommendationsForNewUser(
@@ -82,16 +82,16 @@ public class RecommendationController : ControllerBase
     }
 
     /// <summary>
-    /// Gợi ý cá nhân hóa (Content-based)
+    /// Gợi ý cụm sân cá nhân hóa (Content-based Filtering)
     /// Dùng khi user đã có lịch sử booking
     /// </summary>
-    /// <param name="province">Tỉnh/Thành phố (optional). Nếu không truyền, sẽ gợi ý từ tất cả sân</param>
-    /// <param name="topK">Số lượng sân gợi ý (mặc định 10)</param>
+    /// <param name="province">Tỉnh/Thành phố (optional)</param>
+    /// <param name="topK">Số lượng cụm sân gợi ý (mặc định 10)</param>
     /// <remarks>
     /// Yêu cầu: User phải đăng nhập (JWT token)
     /// Ví dụ:
     /// - Tất cả: GET /api/recommendations/personalized
-    /// - Lọc theo tỉnh: GET /api/recommendations/personalized?province=Hồ Chí Minh
+    /// - Lọc tỉnh: GET /api/recommendations/personalized?province=Hồ Chí Minh
     /// </remarks>
     [HttpGet("personalized")]
     [Authorize]
@@ -118,20 +118,19 @@ public class RecommendationController : ControllerBase
     }
 
     /// <summary>
-    /// Gợi ý tự động (Smart recommendation)
-    /// Tự động chọn strategy phù hợp dựa trên user context
+    /// Smart Recommendation - Tự động chọn strategy tốt nhất
     /// </summary>
     /// <param name="province">Tỉnh/Thành phố (optional)</param>
     /// <param name="ward">Phường/Xã (optional)</param>
-    /// <param name="topK">Số lượng sân gợi ý (mặc định 10)</param>
+    /// <param name="topK">Số lượng cụm sân gợi ý (mặc định 10)</param>
     /// <remarks>
     /// Logic:
-    /// - Nếu user đã login + có booking → Personalized
+    /// - Nếu user login + có booking → Personalized
     /// - Nếu không → Location-based
     /// 
     /// Ví dụ:
-    /// - Tất cả sân: GET /api/recommendations/smart
-    /// - Theo vị trí: GET /api/recommendations/smart?province=Hồ Chí Minh
+    /// - GET /api/recommendations/smart
+    /// - GET /api/recommendations/smart?province=Hồ Chí Minh
     /// </remarks>
     [HttpGet("smart")]
     public async Task<IActionResult> GetSmartRecommendations(
@@ -141,22 +140,17 @@ public class RecommendationController : ControllerBase
     {
         try
         {
-            // Nếu user đã login → personalized
+            // Lấy userId nếu user đã login
+            int? userId = null;
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int userId))
+            if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int parsedUserId))
             {
-                var personalizedResult = await _recommendationService.GetPersonalizedRecommendationsAsync(userId, topK, province);
-                
-                // Nếu có kết quả personalized → dùng
-                if (personalizedResult.Fields.Any())
-                {
-                    return Ok(ApiResponse<RecommendationResponse>.Ok(personalizedResult, "Gợi ý cá nhân hóa"));
-                }
+                userId = parsedUserId;
             }
 
-            // Fallback: location-based cho user mới hoặc không login
-            var newUserResult = await _recommendationService.GetRecommendationsForNewUserAsync(province, ward, topK);
-            return Ok(ApiResponse<RecommendationResponse>.Ok(newUserResult, "Gợi ý dựa trên vị trí"));
+            var result = await _recommendationService.GetSmartRecommendationsAsync(userId, province, ward, topK);
+            
+            return Ok(ApiResponse<RecommendationResponse>.Ok(result, "Lấy gợi ý thành công"));
         }
         catch (Exception ex)
         {

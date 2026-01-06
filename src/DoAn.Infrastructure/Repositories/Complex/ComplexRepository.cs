@@ -170,5 +170,70 @@ public class ComplexRepository : GenericRepository<ComplexEntity>, IComplexRepos
 
         return (complexes, totalCount);
     }
+
+    #region Recommendation Methods
+
+    /// <summary>
+    /// Lấy Complex với đầy đủ thông tin cho recommendation
+    /// QUAN TRỌNG: Chỉ lấy complex có owner đã cập nhật bank info
+    /// </summary>
+    public async Task<ComplexEntity?> GetComplexWithDetailsForRecommendationAsync(int complexId)
+    {
+        var complex = await _dbSet
+            .Include(c => c.Fields.Where(f => !f.IsDeleted))
+                .ThenInclude(f => f.TimeSlots)
+            .Include(c => c.Fields)
+                .ThenInclude(f => f.Bookings)
+            .Include(c => c.ComplexImages)
+            .FirstOrDefaultAsync(c => c.Id == complexId && !c.IsDeleted);
+
+        if (complex == null)
+            return null;
+
+        // Kiểm tra bank info - chỉ trả về complex có owner đã cập nhật bank account
+        var hasBankInfo = await _context.OwnerSettings
+            .AnyAsync(os => os.OwnerId == complex.OwnerId && !string.IsNullOrEmpty(os.BankAccountNumber));
+
+        // Chỉ trả về nếu complex approved, active và có bank info
+        if (complex.Status == ComplexStatus.Approved && complex.IsActive && hasBankInfo)
+            return complex;
+
+        return null;
+    }
+
+    /// <summary>
+    /// Lấy tất cả Complex active với đầy đủ thông tin
+    /// QUAN TRỌNG: Chỉ lấy complex có owner đã cập nhật bank info
+    /// </summary>
+    public async Task<IEnumerable<ComplexEntity>> GetAllActiveComplexesWithDetailsAsync(string? province = null)
+    {
+        // Load complexes với details
+        var complexes = await _dbSet
+            .Include(c => c.Fields.Where(f => !f.IsDeleted))
+                .ThenInclude(f => f.TimeSlots)
+            .Include(c => c.Fields)
+                .ThenInclude(f => f.Bookings)
+            .Include(c => c.ComplexImages)
+            .Where(c => !c.IsDeleted && c.IsActive && c.Status == ComplexStatus.Approved)
+            .ToListAsync();
+
+        // Filter by province nếu có
+        if (!string.IsNullOrEmpty(province))
+        {
+            complexes = complexes.Where(c => c.Province == province).ToList();
+        }
+
+        // Lấy danh sách owner IDs có bank info
+        var ownerIds = complexes.Select(c => c.OwnerId).Distinct().ToList();
+        var ownerIdsWithBank = await _context.OwnerSettings
+            .Where(os => ownerIds.Contains(os.OwnerId) && !string.IsNullOrEmpty(os.BankAccountNumber))
+            .Select(os => os.OwnerId)
+            .ToListAsync();
+
+        // Chỉ trả về các complex có owner đã cập nhật bank info
+        return complexes.Where(c => ownerIdsWithBank.Contains(c.OwnerId)).ToList();
+    }
+
+    #endregion
 }
 
