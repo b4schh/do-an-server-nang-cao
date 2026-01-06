@@ -1,0 +1,19 @@
+namespace DoAn.Core.Domain.Entities;
+
+public class Review
+{
+    public int Id { get; set; }
+    public int BookingId { get; set; }
+    public byte Rating { get; set; } // 1-5
+    public string? Comment { get; set; }
+    public bool IsVisible { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
+
+    // Navigation properties
+    public Booking Booking { get; set; } = null!;
+    public ICollection<ReviewImage> Images { get; set; } = new List<ReviewImage>();
+    public ICollection<ReviewHelpfulVote> HelpfulVotes { get; set; } = new List<ReviewHelpfulVote>();
+}

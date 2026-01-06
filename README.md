@@ -75,7 +75,7 @@ dotnet restore
 dotnet ef database update
 
 # Nếu cần tạo migration mới
-dotnet ef migrations add MigrationName
+dotnet ef migrations add MigrationName --output-dir Database/Migrations --project . --startup-project .
 ```
 
 ### 7. Chạy ứng dụng

@@ -30,3 +30,12 @@ docker compose -f docker-compose.dev.yml --env-file .env.dev up
 
 # Production
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+
+# Khởi động tất cả services (DB, MinIO, API, Nginx)
+docker compose -f docker-compose.dev.yml --env-file .env.dev up -d
+
+# Xem logs real-time
+docker compose -f docker-compose.dev.yml logs -f api
+
+# Xem logs của database
+docker compose -f docker-compose.dev.yml logs -f db
