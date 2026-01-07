@@ -45,9 +45,7 @@ pipeline {
                             -v $(pwd):/src \
                             -w /src \
                             mcr.microsoft.com/dotnet/sdk:8.0 \
-                            bash -c "dotnet restore && dotnet test src/DoAn.Tests/DoAn.Tests.csproj --no-restore --verbosity normal"
-                        
-                        echo "✅ All tests passed!"
+                            sh -c "dotnet restore && dotnet test src/DoAn.Tests/DoAn.Tests.csproj --no-restore --verbosity normal && echo '✅ All tests passed!'"
                     '''
                 }
             }
