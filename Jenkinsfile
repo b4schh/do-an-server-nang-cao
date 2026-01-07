@@ -38,21 +38,18 @@ pipeline {
                     echo "========================================"
                     echo "🧪 Running Unit Tests"
                     echo "========================================"
+                    
+                    // Chạy tests trong Docker container có .NET SDK
+                    sh '''
+                        docker run --rm \
+                            -v $(pwd):/src \
+                            -w /src \
+                            mcr.microsoft.com/dotnet/sdk:8.0 \
+                            bash -c "dotnet restore && dotnet test src/DoAn.Tests/DoAn.Tests.csproj --no-restore --verbosity normal"
+                        
+                        echo "✅ All tests passed!"
+                    '''
                 }
-                sh '''
-                    # Restore dependencies
-                    dotnet restore
-                    
-                    # Run tests with coverage
-                    dotnet test src/DoAn.Tests/DoAn.Tests.csproj \
-                        --no-restore \
-                        --verbosity normal \
-                        --logger "trx;LogFileName=test-results.trx" \
-                        --collect:"XPlat Code Coverage"
-                    
-                    # Display test results
-                    echo "✅ All tests passed!"
-                '''
             }
         }
 
