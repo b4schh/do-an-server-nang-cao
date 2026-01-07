@@ -36,11 +36,17 @@ pipeline {
             steps {
                 script {
                     echo "========================================"
+                    echo "🔍 DEBUG: Kiểm tra cấu trúc thư mục"
+                    echo "========================================"
+                    
+                    // Lệnh này sẽ in ra toàn bộ cây thư mục hiện tại để bạn xem đường dẫn đúng
+                    sh 'ls -R'
+
+                    echo "========================================"
                     echo "🧪 Running Unit Tests"
                     echo "========================================"
                     
-                    // Chạy tests trong Docker container có .NET SDK
-                    // FIX: Thêm đường dẫn cụ thể cho lệnh dotnet restore
+                    // Tạm thời comment lệnh docker cũ hoặc giữ nguyên để xem log ls -R trước
                     sh '''
                         docker run --rm \
                             -v $(pwd):/src \
@@ -48,8 +54,6 @@ pipeline {
                             mcr.microsoft.com/dotnet/sdk:8.0 \
                             sh -c 'dotnet restore src/DoAn.Tests/DoAn.Tests.csproj && dotnet test src/DoAn.Tests/DoAn.Tests.csproj --no-restore --verbosity normal'
                     '''
-                    
-                    echo "✅ All tests passed!"
                 }
             }
         }
