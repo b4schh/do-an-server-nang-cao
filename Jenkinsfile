@@ -4,6 +4,9 @@ pipeline {
     environment {
         REGISTRY_URL = 'localhost:5000'
         IMAGE_NAME   = 'football-api'
+        // Địa chỉ máy production - THAY ĐỔI NÀY
+        PRODUCTION_HOST = '192.168.1.200'  // IP máy production
+        PRODUCTION_USER = 'deploy'          // User có quyền docker
         // IMAGE_TAG sẽ được set ở stage Init
     }
 
@@ -26,6 +29,30 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Run Unit Tests') {
+            steps {
+                script {
+                    echo "========================================"
+                    echo "🧪 Running Unit Tests"
+                    echo "========================================"
+                }
+                sh '''
+                    # Restore dependencies
+                    dotnet restore
+                    
+                    # Run tests with coverage
+                    dotnet test src/DoAn.Tests/DoAn.Tests.csproj \
+                        --no-restore \
+                        --verbosity normal \
+                        --logger "trx;LogFileName=test-results.trx" \
+                        --collect:"XPlat Code Coverage"
+                    
+                    # Display test results
+                    echo "✅ All tests passed!"
+                '''
             }
         }
 
@@ -52,42 +79,54 @@ pipeline {
             }
         }
 
-        stage('Push Image') {
+        stage('Push Image to Registry') {
             steps {
                 sh '''
                     docker push ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}
                     docker push ${REGISTRY_URL}/${IMAGE_NAME}:latest
                 '''
+                echo "✅ Image pushed to registry successfully!"
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to Production') {
             steps {
-                withCredentials([file(credentialsId: 'env-prod-file', variable: 'ENV_PROD')]) {
-                    sh '''
-                        cp $ENV_PROD .env.prod
-                        
-                        # Stop existing containers
-                        docker compose -f docker-compose.prod.yml --env-file .env.prod down || true
-                        
-                        # Pull images with retry (skip if timeout persists)
-                        for i in 1 2 3; do
-                            echo "Attempt $i to pull images..."
-                            if docker compose -f docker-compose.prod.yml --env-file .env.prod pull 2>/dev/null; then
-                                echo "Images pulled successfully"
-                                break
-                            fi
-                            if [ $i -eq 3 ]; then
-                                echo "Pull failed after 3 attempts, using existing images..."
-                            else
-                                echo "Pull failed, retrying in 5 seconds..."
-                                sleep 5
-                            fi
-                        done
-                        
-                        # Start containers (will use local images if pull failed)
-                        docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --force-recreate
-                    '''
+                script {
+                    echo "========================================"
+                    echo "🚀 Deploying to Production Server"
+                    echo "Host: ${PRODUCTION_HOST}"
+                    echo "Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+                    echo "========================================"
+                    
+                    // Option 1: Deploy qua SSH (yêu cầu setup SSH key)
+                    // Uncomment nếu đã setup SSH
+                    /*
+                    sshagent(['production-ssh-key']) {
+                        sh '''
+                            ssh ${PRODUCTION_USER}@${PRODUCTION_HOST} "
+                                cd /path/to/app &&
+                                ./deploy-production.sh
+                            "
+                        '''
+                    }
+                    */
+                    
+                    // Option 2: Manual deploy instruction
+                    echo """
+                    ========================================
+                    ⚠️  MANUAL DEPLOYMENT REQUIRED
+                    ========================================
+                    
+                    Chạy lệnh sau trên máy PRODUCTION (${PRODUCTION_HOST}):
+                    
+                    cd /path/to/football-field-booking-api
+                    ./deploy-production.sh
+                    
+                    Hoặc trên Windows:
+                    deploy-production.bat
+                    
+                    ========================================
+                    """
                 }
             }
         }
@@ -95,11 +134,25 @@ pipeline {
 
     post {
         success {
-            echo "Deployment completed successfully!"
-            echo "Image pushed: ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
+            echo """
+            ========================================
+            ✅ CI Pipeline completed successfully!
+            ========================================
+            
+            Build Info:
+            - Image: ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}
+            - Registry: ${REGISTRY_URL}
+            
+            Next Steps:
+            1. Image đã được push lên registry
+            2. Chạy deploy script trên máy production
+            3. Verify deployment tại ${PRODUCTION_HOST}
+            
+            ========================================
+            """
         }
         failure {
-            echo 'Deployment failed! Please check the logs.'
+            echo 'CI Pipeline failed! Please check the logs.'
         }
     }
 }

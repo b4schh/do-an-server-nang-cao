@@ -2,9 +2,9 @@ services:
   registry:
     image: registry:2
     container_name: registry
-    #restart: unless-stopped
+    restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "0.0.0.0:5000:5000"  # Expose ra tất cả network interfaces
     environment:
       # CORS settings dùng cho việc truy cập registry trực tiếp từ trình duyệt nếu dùng proxy pass thì không cần thiết
       # REGISTRY_HTTP_HEADERS_Access-Control-Allow-Origin: '["http://localhost:8081"]'
