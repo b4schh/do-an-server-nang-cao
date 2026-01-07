@@ -49,7 +49,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER_DEV}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD_DEV}
     volumes:
-      - minio_data_dev:/data
+      - local-minio_minio_data_local:/data  # Sử dụng volume cũ từ docker-compose.local.yml
     command: server /data --console-address ":9001"
 
   nginx:
@@ -64,4 +64,5 @@ services:
 
 volumes:
   sqlserver_data_dev:
-  minio_data_dev:
+  local-minio_minio_data_local:  # Volume cũ từ docker-compose.local.yml
+    external: true               # Đánh dấu là external volume

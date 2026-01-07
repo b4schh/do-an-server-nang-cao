@@ -18,8 +18,8 @@ services:
       REGISTRY_AUTH_HTPASSWD_REALM: 'Registry Realm'
       REGISTRY_AUTH_HTPASSWD_PATH: '/auth/htpasswd'
     volumes:
-      - D:/CODE/do-an-server-nang-cao/ci/registry/registry-data:/var/lib/registry
-      - D:/CODE/do-an-server-nang-cao/ci/registry/auth:/auth
+      - D:/CODE/football-field-booking-api/ci/registry/registry-data:/var/lib/registry
+      - D:/CODE/football-field-booking-api/ci/registry/auth:/auth
 
   ui:
     image: joxit/docker-registry-ui:latest
