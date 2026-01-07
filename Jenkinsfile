@@ -36,24 +36,33 @@ pipeline {
             steps {
                 script {
                     echo "========================================"
-                    echo "🔍 DEBUG: Kiểm tra cấu trúc thư mục"
+                    echo "🧪 Running Unit Tests (Build Method)"
                     echo "========================================"
                     
-                    // Lệnh này sẽ in ra toàn bộ cây thư mục hiện tại để bạn xem đường dẫn đúng
-                    sh 'ls -R'
-
-                    echo "========================================"
-                    echo "🧪 Running Unit Tests"
-                    echo "========================================"
-                    
-                    // Tạm thời comment lệnh docker cũ hoặc giữ nguyên để xem log ls -R trước
-                    sh '''
-                        docker run --rm \
-                            -v $(pwd):/src \
-                            -w /src \
-                            mcr.microsoft.com/dotnet/sdk:8.0 \
-                            sh -c 'dotnet restore src/DoAn.Tests/DoAn.Tests.csproj && dotnet test src/DoAn.Tests/DoAn.Tests.csproj --no-restore --verbosity normal'
+                    // 1. Tạo Dockerfile tạm thời chuyên dùng để test
+                    // Chúng ta COPY toàn bộ code vào container để tránh lỗi volume mount
+                    writeFile file: 'Dockerfile.test', text: '''
+                        FROM mcr.microsoft.com/dotnet/sdk:8.0
+                        WORKDIR /app
+                        COPY . .
+                        CMD dotnet restore src/DoAn.Tests/DoAn.Tests.csproj && dotnet test src/DoAn.Tests/DoAn.Tests.csproj --no-restore --verbosity normal
                     '''
+                    
+                    // 2. Build image test (Docker sẽ copy code vào image context)
+                    // Lưu ý: Dùng -f Dockerfile.test
+                    sh 'docker build -t football-api-test -f Dockerfile.test .'
+                    
+                    // 3. Chạy container để thực thi lệnh CMD (Run test)
+                    try {
+                        sh 'docker run --rm football-api-test'
+                    } finally {
+                        // 4. Dọn dẹp image test sau khi chạy xong (dù thành công hay thất bại)
+                        sh 'docker rmi football-api-test || true'
+                        // Xóa file Dockerfile.test tạm
+                        sh 'rm Dockerfile.test'
+                    }
+                    
+                    echo "✅ All tests passed!"
                 }
             }
         }
