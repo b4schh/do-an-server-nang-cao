@@ -40,7 +40,13 @@ pipeline {
                     echo "========================================"
                     
                     // Chạy tests trong Docker container có .NET SDK
-                    sh 'docker run --rm -v $(pwd):/src -w /src mcr.microsoft.com/dotnet/sdk:8.0 sh -c "dotnet restore && dotnet test src/DoAn.Tests/DoAn.Tests.csproj --no-restore --verbosity normal"'
+                    sh '''
+                        docker run --rm \
+                            -v $(pwd):/src \
+                            -w /src \
+                            mcr.microsoft.com/dotnet/sdk:8.0 \
+                            sh -c 'dotnet restore && dotnet test src/DoAn.Tests/DoAn.Tests.csproj --no-restore --verbosity normal'
+                    '''
                     
                     echo "✅ All tests passed!"
                 }
